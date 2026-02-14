@@ -125,7 +125,7 @@ def example_context_manager():
     )
     
     with ApplicationWrapper(config) as wrapper:
-        result = wrapper.run()
+        result = wrapper.run() # type: ignore
         print(f"Output: {result.stdout}")
     
     print("Context manager ensures cleanup")
@@ -211,6 +211,250 @@ def example_working_directory():
     print()
 
 
+def example_env_from_files():
+    """Example loading environment variables from JSON files."""
+    print("=" * 60)
+    print("ENVIRONMENT FROM FILES EXAMPLE")
+    print("=" * 60)
+    
+    import json
+    
+    # Create temporary environment files
+    temp_dir = Path.cwd() / "temp"
+    temp_dir.mkdir(exist_ok=True)
+    
+    # Base environment
+    base_env = {
+        "APP_NAME": "MyApp",
+        "APP_VERSION": "1.0.0",
+        "DEBUG": "false"
+    }
+    base_env_file = temp_dir / "base_env.json"
+    with open(base_env_file, 'w') as f:
+        json.dump(base_env, f, indent=2)
+    
+    # Override environment
+    override_env = {
+        "DEBUG": "true",
+        "LOG_LEVEL": "verbose"
+    }
+    override_env_file = temp_dir / "override_env.json"
+    with open(override_env_file, 'w') as f:
+        json.dump(override_env, f, indent=2)
+    
+    # Use multiple JSON files (later files override earlier ones)
+    config = WrapperConfig(
+        executable="python",
+        args=["-c", """
+import os
+print(f"APP_NAME: {os.environ.get('APP_NAME')}")
+print(f"APP_VERSION: {os.environ.get('APP_VERSION')}")
+print(f"DEBUG: {os.environ.get('DEBUG')}")
+print(f"LOG_LEVEL: {os.environ.get('LOG_LEVEL')}")
+print(f"CUSTOM: {os.environ.get('CUSTOM')}")
+"""],
+        env_files=[base_env_file, override_env_file],  # Multiple files merged
+        env={"CUSTOM": "from_dict"},  # This overrides files
+        capture_output=True,
+        stream_output=False,
+        inherit_env=False  # Only use our specified env
+    )
+    
+    wrapper = ApplicationWrapper(config)
+    result = wrapper.run()
+    
+    print("Environment priority: system < file1 < file2 < env dict")
+    print(f"Output:\n{result.stdout}")
+    
+    # Cleanup
+    base_env_file.unlink()
+    override_env_file.unlink()
+    print()
+
+
+def example_list_paths():
+    """Example using list-based paths with Unix format."""
+    print("=" * 60)
+    print("LIST-BASED PATHS EXAMPLE")
+    print("=" * 60)
+    
+    import json
+    
+    # Create temporary environment file
+    temp_dir = Path.cwd() / "temp"
+    temp_dir.mkdir(exist_ok=True)
+    
+    # Define paths as lists using Unix format (/)
+    env_with_lists = {
+        "PYTHONPATH": [
+            "R:/repo/project1/py",
+            "R:/repo/project2/py",
+            "R:/repo/project3/py"
+        ],
+        "PATH": [
+            "C:/Python312",
+            "C:/Python312/Scripts",
+            "R:/repo/tools/bin"
+        ],
+        "+=CUSTOM_PATH": [
+            "C:/extra/path1",
+            "C:/extra/path2"
+        ],
+        "SINGLE_VAR": "R:/some/single/path"
+    }
+    
+    env_file = temp_dir / "list_paths.json"
+    with open(env_file, 'w') as f:
+        json.dump(env_with_lists, f, indent=2)
+    
+    # Set up existing environment for append demo
+    os.environ["CUSTOM_PATH"] = "C:/original/custom"
+    
+    config = WrapperConfig(
+        executable="python",
+        args=["-c", """
+import os
+import sys
+print("PYTHONPATH:")
+pythonpath = os.environ.get('PYTHONPATH', '')
+for p in pythonpath.split(';' if sys.platform == 'win32' else ':'):
+    if p:
+        print(f"  - {p}")
+
+print()
+print("PATH (first 3):")
+path = os.environ.get('PATH', '')
+for i, p in enumerate(path.split(';' if sys.platform == 'win32' else ':')):
+    if i < 3 and p:
+        print(f"  - {p}")
+
+print()
+print("CUSTOM_PATH:")
+custom = os.environ.get('CUSTOM_PATH', '')
+for p in custom.split(';' if sys.platform == 'win32' else ':'):
+    if p:
+        print(f"  - {p}")
+"""],
+        env_files=env_file,
+        capture_output=True,
+        stream_output=False,
+        inherit_env=False
+    )
+    
+    wrapper = ApplicationWrapper(config)
+    result = wrapper.run()
+    
+    print("Benefits of list-based paths:")
+    print("  ✓ Cleaner, more readable JSON")
+    print("  ✓ Unix-style paths (/) work cross-platform")
+    print("  ✓ Automatically joined with OS separator")
+    print()
+    print(f"Output:\n{result.stdout}")
+    
+    # Cleanup
+    env_file.unlink()
+    print()
+
+
+def example_env_append_prepend():
+    """Example demonstrating append/prepend to environment variables."""
+    print("=" * 60)
+    print("ENVIRONMENT APPEND/PREPEND EXAMPLE")
+    print("=" * 60)
+    
+    import json
+    
+    # Create temporary environment files
+    temp_dir = Path.cwd() / "temp"
+    temp_dir.mkdir(exist_ok=True)
+    
+    # Set a base PYTHONPATH for demonstration
+    os.environ["MY_CUSTOM_PATH"] = "C:\\original\\path"
+    
+    # Method 1: Using {$VARNAME} syntax
+    print("Method 1: Using {$VARNAME} syntax")
+    append_env = {
+        "MY_CUSTOM_PATH": "{$MY_CUSTOM_PATH};C:\\appended\\path",
+        "NEW_VAR": "Initial value"
+    }
+    append_file = temp_dir / "append_env.json"
+    with open(append_file, 'w') as f:
+        json.dump(append_env, f, indent=2)
+    
+    # Prepend to variable (and chain multiple files)
+    prepend_env = {
+        "MY_CUSTOM_PATH": "C:\\prepended\\path;{$MY_CUSTOM_PATH}",
+        "NEW_VAR": "{$NEW_VAR} + more"
+    }
+    prepend_file = temp_dir / "prepend_env.json"
+    with open(prepend_file, 'w') as f:
+        json.dump(prepend_env, f, indent=2)
+    
+    config = WrapperConfig(
+        executable="python",
+        args=["-c", """
+import os
+print(f"MY_CUSTOM_PATH: {os.environ.get('MY_CUSTOM_PATH')}")
+print(f"NEW_VAR: {os.environ.get('NEW_VAR')}")
+"""],
+        env_files=[append_file, prepend_file],
+        capture_output=True,
+        stream_output=False
+    )
+    
+    wrapper = ApplicationWrapper(config)
+    result = wrapper.run()
+    
+    print(f"Output:\n{result.stdout}")
+    
+    # Method 2: Using += and ^= operators
+    print("\nMethod 2: Using += and ^= operators")
+    
+    # Reset for demonstration
+    os.environ["MY_CUSTOM_PATH"] = "C:\\original\\path"
+    
+    # Append operator
+    append_op_env = {
+        "+=MY_CUSTOM_PATH": "C:\\appended\\with\\operator"
+    }
+    append_op_file = temp_dir / "append_op_env.json"
+    with open(append_op_file, 'w') as f:
+        json.dump(append_op_env, f, indent=2)
+    
+    # Prepend operator
+    prepend_op_env = {
+        "^=MY_CUSTOM_PATH": "C:\\prepended\\with\\operator"
+    }
+    prepend_op_file = temp_dir / "prepend_op_env.json"
+    with open(prepend_op_file, 'w') as f:
+        json.dump(prepend_op_env, f, indent=2)
+    
+    config2 = WrapperConfig(
+        executable="python",
+        args=["-c", "import os; print(f'MY_CUSTOM_PATH: {os.environ.get(\"MY_CUSTOM_PATH\")}')"  ],
+        env_files=[append_op_file, prepend_op_file],
+        capture_output=True,
+        stream_output=False
+    )
+    
+    wrapper2 = ApplicationWrapper(config2)
+    result2 = wrapper2.run()
+    
+    print(f"Output:\n{result2.stdout}")
+    
+    print("\nOperator Syntax Summary:")
+    print("  +=VAR  : Appends value to existing variable")
+    print("  ^=VAR  : Prepends value to existing variable")
+    print("  VAR    : Replaces value (supports {$VAR} expansion)")
+    
+    # Cleanup
+    append_file.unlink()
+    prepend_file.unlink()
+    append_op_file.unlink()
+    prepend_op_file.unlink()
+    print()
+
+
 def example_real_world_scenario():
     """Real-world scenario: Running a build process."""
     print("=" * 60)
@@ -228,7 +472,7 @@ def example_real_world_scenario():
         print("   - Build environment ready!")
     
     def post_build(result: ExecutionResult):
-        duration = time.time() - build_start_time
+        duration = time.time() - build_start_time # type: ignore
         if result.success:
             print(f"✅ Build completed successfully in {duration:.2f}s")
             print("   - Artifacts generated")
@@ -286,8 +530,11 @@ if __name__ == "__main__":
         example_context_manager,
         example_convenience_function,
         example_working_directory,
+        example_env_from_files,
+        example_list_paths,
+        example_env_append_prepend,
         example_error_handling,
-        example_timeout,
+        example_with_timeout,
         example_real_world_scenario
     ]
     

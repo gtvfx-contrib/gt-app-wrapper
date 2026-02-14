@@ -58,9 +58,9 @@ def test_environment_variables():
     result = wrapper.run()
     
     assert result.success, "Should execute successfully"
-    assert "hello_world" in result.stdout, "Should have custom env var"
+    assert "hello_world" in result.stdout, "Should have custom env var" # type: ignore
     
-    print(f"  ✅ Environment test passed: {result.stdout.strip()}")
+    print(f"  ✅ Environment test passed: {result.stdout.strip()}") # type: ignore
 
 
 def test_pre_post_run():
@@ -205,7 +205,7 @@ def test_convenience_function():
     result = wrapper.run()
     
     assert result.success, "Should execute successfully"
-    assert "hello" in result.stdout, "Should capture output"
+    assert "hello" in result.stdout, "Should capture output" # type: ignore
     
     print("  ✅ Convenience function test passed")
 
@@ -229,7 +229,7 @@ def test_working_directory():
         
         assert result.success, "Should execute successfully"
         # Normalize paths for comparison
-        actual_cwd = os.path.normpath(result.stdout.strip())
+        actual_cwd = os.path.normpath(result.stdout.strip()) # type: ignore
         expected_cwd = os.path.normpath(tmpdir)
         assert actual_cwd == expected_cwd, f"Working directory should match: {actual_cwd} != {expected_cwd}"
     
