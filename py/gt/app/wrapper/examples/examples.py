@@ -462,15 +462,15 @@ def example_special_variables():
     
     import json
     
-    # Create a package structure with env directory
+    # Create a package structure with wrapper_env directory
     temp_dir = Path(__file__).parent.parent / "test_package" / "temp"
     temp_dir.mkdir(exist_ok=True)
     
     # Create package directory structure
     package_dir = temp_dir / "my_package"
     package_dir.mkdir(exist_ok=True)
-    env_dir = package_dir / "env"
-    env_dir.mkdir(exist_ok=True)
+    wrapper_env_dir = package_dir / "wrapper_env"
+    wrapper_env_dir.mkdir(exist_ok=True)
     
     # Create environment file using special variables
     env_config = {
@@ -485,7 +485,7 @@ def example_special_variables():
         "ENV_FILE_PATH": "{$__FILE__}"
     }
     
-    env_file = env_dir / "config.json"
+    env_file = wrapper_env_dir / "config.json"
     with open(env_file, 'w') as f:
         json.dump(env_config, f, indent=2)
     
@@ -518,8 +518,8 @@ print(f"ENV_FILE_PATH: {os.environ.get('ENV_FILE_PATH')}")
     result = wrapper.run()
     
     print("Special variables available:")
-    print("  {$__PACKAGE__}      - Package root (parent of env/)")
-    print("  {$__PACKAGE_ENV__}  - The env/ directory")
+    print("  {$__PACKAGE__}      - Package root (parent of wrapper_env/)")
+    print("  {$__PACKAGE_ENV__}  - The wrapper_env/ directory")
     print("  {$__PACKAGE_NAME__} - Package directory name")
     print("  {$__FILE__}         - Current env file path")
     print()

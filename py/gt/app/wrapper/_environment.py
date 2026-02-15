@@ -47,8 +47,8 @@ class EnvironmentManager:
         Also supports special wrapper-internal variables with __ prefix/suffix.
         
         Special variables:
-            {$__PACKAGE__}      - Root directory of the package (parent of env/)
-            {$__PACKAGE_ENV__}  - The env/ directory itself
+            {$__PACKAGE__}      - Root directory of the package (parent of wrapper_env/)
+            {$__PACKAGE_ENV__}  - The wrapper_env/ directory itself
             {$__PACKAGE_NAME__} - Name of the package (directory name)
             {$__FILE__}         - Current environment JSON file being processed
         
@@ -117,7 +117,7 @@ class EnvironmentManager:
         - Strings: used as-is
         - Other types: converted to string
         - {$VARNAME} expansion (including special variables)
-        - Path normalization (Unix to Windows if needed)
+        - Paths stored in UNIX style (forward slashes) for cross-platform compatibility
         
         Args:
             value: The value from JSON (string, list, or other)
@@ -133,12 +133,11 @@ class EnvironmentManager:
         
         # Handle list values - join with path separator
         if isinstance(value, list):
-            # Normalize each path in the list
-            normalized_paths = [self.normalize_path(str(item)) for item in value]
-            str_value = path_sep.join(normalized_paths)
+            # Keep paths in UNIX style (forward slashes) for consistency
+            str_value = path_sep.join(str(item) for item in value)
         else:
-            # Convert to string and normalize
-            str_value = self.normalize_path(str(value))
+            # Convert to string, keep as-is
+            str_value = str(value)
         
         # Expand any {$VARNAME} references (including special vars)
         expanded_value = self.expand_env_value(str_value, merged_env, special_vars)
@@ -150,8 +149,8 @@ class EnvironmentManager:
         """Calculate special wrapper-internal variables for an environment file.
         
         Special variables:
-            __PACKAGE__      - Root directory of the package (parent of env/)
-            __PACKAGE_ENV__  - The env/ directory itself
+            __PACKAGE__      - Root directory of the package (parent of wrapper_env/)
+            __PACKAGE_ENV__  - The wrapper_env/ directory itself
             __PACKAGE_NAME__ - Name of the package (directory name)
             __FILE__         - Current environment JSON file being processed
         
@@ -164,19 +163,19 @@ class EnvironmentManager:
         """
         env_file_abs = env_file_path.resolve()
         
-        # Try to find the env/ directory by walking up the path
+        # Try to find the wrapper_env/ directory by walking up the path
         current = env_file_abs.parent
         package_env_dir = None
         package_root = None
         
-        # Look for 'env' directory in the path
+        # Look for 'wrapper_env' directory in the path
         for parent in [current] + list(current.parents):
-            if parent.name == 'env':
+            if parent.name == 'wrapper_env':
                 package_env_dir = parent
                 package_root = parent.parent
                 break
         
-        # If no env/ directory found, use file's parent as package root
+        # If no wrapper_env/ directory found, use file's parent as package root
         if package_root is None:
             package_root = env_file_abs.parent
             package_env_dir = package_root
@@ -211,8 +210,8 @@ class EnvironmentManager:
             Special:  "PATH": "{$__PACKAGE__}/bin"
         
         Special wrapper variables:
-            {$__PACKAGE__}      - Root directory of the package (parent of env/)
-            {$__PACKAGE_ENV__}  - The env/ directory itself
+            {$__PACKAGE__}      - Root directory of the package (parent of wrapper_env/)
+            {$__PACKAGE_ENV__}  - The wrapper_env/ directory itself
             {$__PACKAGE_NAME__} - Name of the package (directory name)
             {$__FILE__}         - Current environment JSON file path
         
