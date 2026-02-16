@@ -25,7 +25,7 @@ def setup_logging(verbose: bool = False) -> None:
         verbose: Enable verbose logging
         
     """
-    level = logging.DEBUG if verbose else logging.INFO
+    level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(
         level=level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -186,7 +186,7 @@ def run_command(
             for package in packages:
                 env_file_path = package.wrapper_env / env_file_name
                 if env_file_path.exists():
-                    env_files.append(env_file_path)
+                    env_files.append(str(env_file_path))
                     log.debug(f"Found environment file: {env_file_path}")
     else:
         # Legacy mode: use command's wrapper_env_dir
@@ -202,11 +202,11 @@ def run_command(
                 return 1
         
         # Build full environment file paths
-        env_files = [wrapper_env_dir / env_file for env_file in cmd.environment]
+        env_files = [str(wrapper_env_dir / env_file) for env_file in cmd.environment]
         
         # Verify all environment files exist (only in legacy mode)
         for env_file in env_files:
-            if not env_file.exists():
+            if not Path(env_file).exists():
                 print(f"Error: Environment file not found: {env_file}", file=sys.stderr)
                 return 1
     
@@ -217,7 +217,7 @@ def run_command(
     config = WrapperConfig(
         executable=cmd.executable,
         args=full_args,
-        env_files=env_files,
+        env_files=[Path(f) for f in env_files],
         capture_output=False,
         stream_output=True,
         log_execution=verbose
