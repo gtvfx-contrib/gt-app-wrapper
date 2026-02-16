@@ -150,16 +150,21 @@ Create a `packages.json` file:
 ```json
 {
   "packages": [
-    {
-      "root": "R:/repo/my-app",
-      "name": "my-app"
-    },
-    {
-      "root": "C:/tools/build-tools",
-      "name": "build-tools"
-    }
+    "R:/repo/my-app",
+    "R:/repo/build-tools",
+    "C:/tools/deploy-tools"
   ]
 }
+```
+
+Or as a direct array:
+
+```json
+[
+  "R:/repo/my-app",
+  "R:/repo/build-tools",
+  "C:/tools/deploy-tools"
+]
 ```
 
 Use with:
