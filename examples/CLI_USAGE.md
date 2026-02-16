@@ -6,7 +6,7 @@ The wrapper can now be used as a command-line interface (CLI) where commands are
 
 ## Command Definition
 
-Create a `wrapper_env/commands.json` file with your command definitions:
+Create a `envoy_env/commands.json` file with your command definitions:
 
 ```json
 {
@@ -20,7 +20,7 @@ Create a `wrapper_env/commands.json` file with your command definitions:
 ### Fields
 
 - **command_name**: The name used to invoke the command via CLI
-- **environment**: List of JSON environment files to load (relative to `wrapper_env/`)
+- **environment**: List of JSON environment files to load (relative to `envoy_env/`)
 - **alias** (optional): Command and base arguments to execute
   - If provided: `alias[0]` is the executable, `alias[1:]` are base arguments
   - If not provided: `command_name` must be an executable on PATH
@@ -121,10 +121,10 @@ Save as `python_dev.bat` and place it in a directory on your PATH.
 
 ## Command Discovery
 
-The CLI automatically searches for `wrapper_env/commands.json`:
+The CLI automatically searches for `envoy_env/commands.json`:
 
 1. Starts in the current directory
-2. Checks for `wrapper_env/commands.json`
+2. Checks for `envoy_env/commands.json`
 3. If not found, moves up to the parent directory
 4. Repeats until found or reaches the filesystem root
 
@@ -157,7 +157,7 @@ cd examples/
 # Set PYTHONPATH
 $env:PYTHONPATH = "R:\repo\gtvfx-contrib\gt\app\wrapper\py"
 
-# Run command (will auto-detect wrapper_env/commands.json)
+# Run command (will auto-detect envoy_env/commands.json)
 python -m gt.app.wrapper python_dev --help
 ```
 
@@ -196,11 +196,11 @@ python -m gt.app.wrapper python_dev script.py
 
 ## Environment File Paths
 
-Environment files in `commands.json` are relative to the `wrapper_env/` directory:
+Environment files in `commands.json` are relative to the `envoy_env/` directory:
 
 ```
 project/
-├── wrapper_env/
+├── envoy_env/
 │   ├── commands.json
 │   ├── base_env.json       ← "base_env.json"
 │   └── configs/
@@ -212,10 +212,10 @@ project/
 If commands.json is not found:
 ```
 Error: Could not find commands.json
-Searched for wrapper_env/commands.json in current directory and parents
+Searched for envoy_env/commands.json in current directory and parents
 ```
 
-Solution: Ensure you're in a project directory with a `wrapper_env/commands.json` file or specify the path with `--commands-file`.
+Solution: Ensure you're in a project directory with an `envoy_env/commands.json` file or specify the path with `--commands-file`.
 
 If a command is not found:
 ```

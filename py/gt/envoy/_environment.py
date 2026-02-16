@@ -47,8 +47,8 @@ class EnvironmentManager:
         Also supports special wrapper-internal variables with __ prefix/suffix.
         
         Special variables:
-            {$__PACKAGE__}      - Root directory of the package (parent of wrapper_env/)
-            {$__PACKAGE_ENV__}  - The wrapper_env/ directory itself
+            {$__PACKAGE__}      - Root directory of the package (parent of envoy_env/)
+            {$__PACKAGE_ENV__}  - The envoy_env/ directory itself
             {$__PACKAGE_NAME__} - Name of the package (directory name)
             {$__FILE__}         - Current environment JSON file being processed
         
@@ -149,8 +149,8 @@ class EnvironmentManager:
         """Calculate special wrapper-internal variables for an environment file.
         
         Special variables:
-            __PACKAGE__      - Root directory of the package (parent of wrapper_env/)
-            __PACKAGE_ENV__  - The wrapper_env/ directory itself
+            __PACKAGE__      - Root directory of the package (parent of envoy_env/)
+            __PACKAGE_ENV__  - The envoy_env/ directory itself
             __PACKAGE_NAME__ - Name of the package (directory name)
             __FILE__         - Current environment JSON file being processed
         
@@ -163,19 +163,19 @@ class EnvironmentManager:
         """
         env_file_abs = env_file_path.resolve()
         
-        # Try to find the wrapper_env/ directory by walking up the path
+        # Try to find the envoy_env/ directory by walking up the path
         current = env_file_abs.parent
         package_env_dir = None
         package_root = None
         
-        # Look for 'wrapper_env' directory in the path
+        # Look for 'envoy_env' directory in the path
         for parent in [current] + list(current.parents):
-            if parent.name == 'wrapper_env':
+            if parent.name == 'envoy_env':
                 package_env_dir = parent
                 package_root = parent.parent
                 break
         
-        # If no wrapper_env/ directory found, use file's parent as package root
+        # If no envoy_env/ directory found, use file's parent as package root
         if package_root is None:
             package_root = env_file_abs.parent
             package_env_dir = package_root
@@ -210,8 +210,8 @@ class EnvironmentManager:
             Special:  "PATH": "{$__PACKAGE__}/bin"
         
         Special wrapper variables:
-            {$__PACKAGE__}      - Root directory of the package (parent of wrapper_env/)
-            {$__PACKAGE_ENV__}  - The wrapper_env/ directory itself
+            {$__PACKAGE__}      - Root directory of the package (parent of envoy_env/)
+            {$__PACKAGE_ENV__}  - The envoy_env/ directory itself
             {$__PACKAGE_NAME__} - Name of the package (directory name)
             {$__FILE__}         - Current environment JSON file path
         

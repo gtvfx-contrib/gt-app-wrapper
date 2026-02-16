@@ -1,4 +1,4 @@
-"""Command-line interface for the application wrapper."""
+"""Command-line interface for envoy."""
 
 import sys
 import argparse
@@ -97,8 +97,8 @@ def show_command_info(registry: CommandRegistry, command_name: str) -> int:
     for env_file in cmd.environment:
         print(f"  - {env_file}")
     
-    if cmd.wrapper_env_dir:
-        print(f"Environment directory: {cmd.wrapper_env_dir}")
+    if cmd.envoy_env_dir:
+        print(f"Environment directory: {cmd.envoy_env_dir}")
     
     if cmd.alias:
         print(f"Alias: {' '.join(cmd.alias)}")
@@ -174,7 +174,7 @@ def run_command(
     
     if not cmd:
         print(f"Error: Command '{command_name}' not found", file=sys.stderr)
-        print(f"Run 'wrapper --list' to see available commands", file=sys.stderr)
+        print(f"Run 'envoy --list' to see available commands", file=sys.stderr)
         return 1
     
     # Collect environment files
@@ -184,21 +184,21 @@ def run_command(
         # Multi-package mode: search for each env file across ALL packages
         for env_file_name in cmd.environment:
             for package in packages:
-                env_file_path = package.wrapper_env / env_file_name
+                env_file_path = package.envoy_env / env_file_name
                 if env_file_path.exists():
                     env_files.append(str(env_file_path))
                     log.debug(f"Found environment file: {env_file_path}")
     else:
-        # Legacy mode: use command's wrapper_env_dir
-        if cmd.wrapper_env_dir:
-            wrapper_env_dir = cmd.wrapper_env_dir
+        # Legacy mode: use command's envoy_env_dir
+        if cmd.envoy_env_dir:
+            wrapper_env_dir = cmd.envoy_env_dir
         else:
             # Fall back to finding commands.json
             commands_file = find_commands_file()
             if commands_file:
                 wrapper_env_dir = commands_file.parent
             else:
-                print(f"Error: Cannot determine wrapper_env directory", file=sys.stderr)
+                print(f"Error: Cannot determine envoy_env directory", file=sys.stderr)
                 return 1
         
         # Build full environment file paths
@@ -247,8 +247,8 @@ def main(argv: list[str] | None = None) -> int:
         
     """
     parser = argparse.ArgumentParser(
-        prog='wrapper',
-        description='Application wrapper with environment management'
+        prog='envoy',
+        description='Envoy: Environment orchestration for applications'
     )
     
     parser.add_argument(
@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         '--packages-config',
         type=Path,
-        help='Path to packages config file (auto-discovers from DO_PKG_ROOTS if not specified)'
+        help='Path to packages config file (auto-discovers from ENVOY_PKG_ROOTS if not specified)'
     )
     
     parser.add_argument(
@@ -362,8 +362,8 @@ def main(argv: list[str] | None = None) -> int:
                     return 1
             else:
                 print("Error: Could not find commands.json", file=sys.stderr)
-                print("Searched for wrapper_env/commands.json in current directory and parents", file=sys.stderr)
-                print("Or set DO_PKG_ROOTS environment variable for auto-discovery", file=sys.stderr)
+                print("Searched for envoy_env/commands.json in current directory and parents", file=sys.stderr)
+                print("Or set ENVOY_PKG_ROOTS environment variable for auto-discovery", file=sys.stderr)
                 return 1
     
     # Check if we have any commands

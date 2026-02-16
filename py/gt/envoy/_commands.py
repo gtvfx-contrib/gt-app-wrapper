@@ -19,7 +19,7 @@ class CommandDefinition:
         environment: List of environment JSON files to load
         alias: Optional list of command parts to execute instead of command name
         package: Optional package name this command comes from
-        wrapper_env_dir: Directory containing environment files
+        envoy_env_dir: Directory containing environment files
         
     """
     
@@ -29,7 +29,7 @@ class CommandDefinition:
         environment: list[str],
         alias: list[str] | None = None,
         package: str | None = None,
-        wrapper_env_dir: Path | None = None
+        envoy_env_dir: Path | None = None
     ):
         """Initialize command definition.
         
@@ -38,14 +38,14 @@ class CommandDefinition:
             environment: List of environment file names
             alias: Optional alias command parts (e.g., ["python", "-m", "module"])
             package: Optional package name this command belongs to
-            wrapper_env_dir: Optional directory containing environment files
+            envoy_env_dir: Optional directory containing environment files
             
         """
         self.name = name
         self.environment = environment
         self.alias = alias
         self.package = package
-        self.wrapper_env_dir = wrapper_env_dir
+        self.envoy_env_dir = envoy_env_dir
     
     @property
     def executable(self) -> str:
@@ -143,7 +143,7 @@ class CommandRegistry:
                     environment=environment,
                     alias=alias,
                     package=package_name,
-                    wrapper_env_dir=wrapper_env_dir
+                    envoy_env_dir=wrapper_env_dir
                 )
                 
                 # Track conflicts
@@ -173,7 +173,7 @@ class CommandRegistry:
             
         """
         for package in packages:
-            commands_file = package.wrapper_env / "commands.json"
+            commands_file = package.envoy_env / "commands.json"
             if commands_file.exists():
                 try:
                     self.load_from_file(commands_file, package_name=package.name)
@@ -219,7 +219,7 @@ class CommandRegistry:
 
 
 def find_commands_file(start_path: Path | None = None) -> Path | None:
-    """Find commands.json by searching up the directory tree for wrapper_env/.
+    """Find commands.json by searching up the directory tree for envoy_env/.
     
     Args:
         start_path: Starting directory (defaults to cwd)
@@ -233,9 +233,9 @@ def find_commands_file(start_path: Path | None = None) -> Path | None:
     
     current = start_path.resolve()
     
-    # Search up the tree for wrapper_env directory
+    # Search up the tree for envoy_env directory
     for parent in [current] + list(current.parents):
-        wrapper_env_dir = parent / "wrapper_env"
+        wrapper_env_dir = parent / "envoy_env"
         if wrapper_env_dir.is_dir():
             commands_file = wrapper_env_dir / "commands.json"
             if commands_file.exists():

@@ -2,7 +2,7 @@
 Package discovery for wrapper environments.
 
 Supports two methods of discovering packages:
-1. Auto-discovery: Search directories specified in DO_PKG_ROOTS for git repositories
+1. Auto-discovery: Search directories specified in ENVOY_PKG_ROOTS for git repositories
 2. Config file: Explicit list of package paths
 """
 
@@ -31,7 +31,7 @@ class PackageInfo:
         """
         self.root = root
         self.name = name
-        self.wrapper_env = root / "wrapper_env"
+        self.envoy_env = root / "envoy_env"
         
     def __repr__(self):
         return f"PackageInfo(name={self.name}, root={self.root})"
@@ -53,26 +53,26 @@ def is_git_repo(path: Path) -> bool:
     return (path / ".git").is_dir()
 
 
-def has_wrapper_env(path: Path) -> bool:
+def has_envoy_env(path: Path) -> bool:
     """
-    Check if a directory has a wrapper_env subdirectory.
+    Check if a directory has an envoy_env subdirectory.
     
     Args:
         path: Path to check
         
     Returns:
-        True if path contains a wrapper_env directory
+        True if path contains an envoy_env directory
     """
-    return (path / "wrapper_env").is_dir()
+    return (path / "envoy_env").is_dir()
 
 
 def validate_package(path: Path) -> bool:
     """
-    Validate that a path is a valid wrapper package.
+    Validate that a path is a valid envoy package.
     
     A valid package must:
     - Be a directory
-    - Have a wrapper_env subdirectory
+    - Have an envoy_env subdirectory
     
     Args:
         path: Path to validate
@@ -83,7 +83,7 @@ def validate_package(path: Path) -> bool:
     if not path.is_dir():
         return False
     
-    if not has_wrapper_env(path):
+    if not has_envoy_env(path):
         return False
     
     return True
@@ -135,7 +135,7 @@ def discover_packages_from_roots(root_dirs: List[str]) -> List[PackageInfo]:
     """
     Discover packages in specified root directories.
     
-    Searches for git repositories and validates them as wrapper packages.
+    Searches for git repositories and validates them as envoy packages.
     
     Args:
         root_dirs: List of root directory paths
@@ -163,25 +163,25 @@ def discover_packages_from_roots(root_dirs: List[str]) -> List[PackageInfo]:
                 packages.append(package)
                 logger.info(f"Discovered package: {package}")
             else:
-                logger.debug(f"Git repo is not a wrapper package: {repo_path}")
+                logger.debug(f"Git repo is not an envoy package: {repo_path}")
     
     return packages
 
 
 def discover_packages_auto() -> List[PackageInfo]:
     """
-    Auto-discover packages using DO_PKG_ROOTS environment variable.
+    Auto-discover packages using ENVOY_PKG_ROOTS environment variable.
     
-    DO_PKG_ROOTS should contain a list of root directories separated by
+    ENVOY_PKG_ROOTS should contain a list of root directories separated by
     the OS path separator (';' on Windows, ':' on Unix).
     
     Returns:
         List of discovered packages
     """
-    roots_str = os.environ.get('DO_PKG_ROOTS', '')
+    roots_str = os.environ.get('ENVOY_PKG_ROOTS', '')
     
     if not roots_str:
-        logger.debug("DO_PKG_ROOTS not set, no auto-discovery")
+        logger.debug("ENVOY_PKG_ROOTS not set, no auto-discovery")
         return []
     
     # Split by OS path separator
@@ -189,7 +189,7 @@ def discover_packages_auto() -> List[PackageInfo]:
     root_dirs = [r.strip() for r in roots_str.split(separator) if r.strip()]
     
     if not root_dirs:
-        logger.debug("DO_PKG_ROOTS is empty")
+        logger.debug("ENVOY_PKG_ROOTS is empty")
         return []
     
     logger.info(f"Auto-discovering packages from {len(root_dirs)} root(s)")
@@ -265,7 +265,7 @@ def get_packages(config_file: Optional[Path] = None) -> List[PackageInfo]:
     Get all packages using config file or auto-discovery.
     
     If config_file is provided, only packages from the config are used.
-    Otherwise, auto-discovery is attempted using DO_PKG_ROOTS.
+    Otherwise, auto-discovery is attempted using ENVOY_PKG_ROOTS.
     
     Args:
         config_file: Optional path to config file
@@ -297,10 +297,10 @@ def get_package_env_files(packages: List[PackageInfo]) -> Dict[str, List[Path]]:
     
     for package in packages:
         files = []
-        wrapper_env = package.wrapper_env
+        wrapper_env = package.envoy_env
         
         if wrapper_env.is_dir():
-            # Find all .json files in wrapper_env
+            # Find all .json files in envoy_env
             for json_file in wrapper_env.glob("*.json"):
                 # Skip commands.json as it's handled separately
                 if json_file.name != "commands.json":
@@ -328,7 +328,7 @@ def get_package_commands_files(packages: List[PackageInfo]) -> Dict[str, Path]:
     commands_files = {}
     
     for package in packages:
-        commands_file = package.wrapper_env / "commands.json"
+        commands_file = package.envoy_env / "commands.json"
         
         if commands_file.is_file():
             commands_files[package.name] = commands_file

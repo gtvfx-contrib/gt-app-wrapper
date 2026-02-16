@@ -58,8 +58,8 @@ You can append or prepend to existing environment variables using two methods:
 The wrapper provides special internal variables that resolve to package-relative paths:
 
 **Available Special Variables:**
-- `{$__PACKAGE__}` - Root directory of the package (parent of `wrapper_env/` directory)
-- `{$__PACKAGE_ENV__}` - The `wrapper_env/` directory itself
+- `{$__PACKAGE__}` - Root directory of the package (parent of `envoy_env/` directory)
+- `{$__PACKAGE_ENV__}` - The `envoy_env/` directory itself
 - `{$__PACKAGE_NAME__}` - Name of the package (directory name)
 - `{$__FILE__}` - Path to the current environment JSON file
 
@@ -80,9 +80,9 @@ The wrapper provides special internal variables that resolve to package-relative
 **Package Structure:**
 ```
 my-package/
-├── wrapper_env/
+├── envoy_env/
 │   └── base.json    ← {$__FILE__} points here
-│                    ← {$__PACKAGE_ENV__} points to wrapper_env/
+│                    ← {$__PACKAGE_ENV__} points to envoy_env/
 ├── bin/             ← {$__PACKAGE__} points to my-package/
 ├── py/              ← {$__PACKAGE_NAME__} = "my-package"
 └── config/

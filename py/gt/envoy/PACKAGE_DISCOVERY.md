@@ -25,8 +25,8 @@ export DO_PKG_ROOTS=/home/user/repos:/opt/projects
 #### How it Works
 
 1. Searches each root directory for subdirectories containing `.git` folders
-2. Validates each Git repository by checking for a `wrapper_env/` directory
-3. Loads commands from`wrapper_env/commands.json` in each valid package
+2. Validates each Git repository by checking for an `envoy_env/` directory
+3. Loads commands from`envoy_env/commands.json` in each valid package
 4. Commands from all packages are merged into a single registry
 
 #### Example Structure
@@ -35,12 +35,12 @@ export DO_PKG_ROOTS=/home/user/repos:/opt/projects
 R:\repo\
 ├── project-a\
 │   ├── .git\
-│   └── wrapper_env\
+│   └── envoy_env\
 │       ├── commands.json
 │       └── env.json
 ├── project-b\
 │   ├── .git\
-│   └── wrapper_env\
+│   └── envoy_env\
 │       ├── commands.json
 │       └── env.json
 └── other-folder\
@@ -116,7 +116,7 @@ Package: my-package
 Executable: python
 Environment files:
   - dev_env.json
-Environment directory: /path/to/my-package/wrapper_env
+Environment directory: /path/to/my-package/envoy_env
 Alias: python
 ```
 
@@ -124,14 +124,14 @@ Alias: python
 
 A valid package must:
 
-1. Have a `wrapper_env/` directory
-2. Optionally include `wrapper_env/commands.json` for command definitions
-3. Optionally include environment JSON files in `wrapper_env/`
+1. Have an `envoy_env/` directory
+2. Optionally include `envoy_env/commands.json` for command definitions
+3. Optionally include environment JSON files in `envoy_env/`
 
 ```
 my-package/
 ├── .git/                      # Optional (for auto-discovery)
-├── wrapper_env/
+├── envoy_env/
 │   ├── commands.json          # Command definitions
 │   ├── base_env.json          # Environment variables
 │   └── dev_env.json           # Additional environments
@@ -145,7 +145,7 @@ my-package/
 
 1. **Config File**: If `--packages-config` is specified, only those packages are loaded
 2. **Auto-Discovery**: If no config file, attempts auto-discovery via `DO_PKG_ROOTS`
-3. **Local Fallback**: If no packages found, falls back to local `wrapper_env/commands.json`
+3. **Local Fallback**: If no packages found, falls back to local `envoy_env/commands.json`
 
 ### Command Conflicts
 
@@ -198,7 +198,7 @@ do --list
 
 ### Example 3: Mixed Environments
 
-Package 1 (`app-framework/wrapper_env/commands.json`):
+Package 1 (`app-framework/envoy_env/commands.json`):
 
 ```json
 {
@@ -209,7 +209,7 @@ Package 1 (`app-framework/wrapper_env/commands.json`):
 }
 ```
 
-Package 2 (`tools/wrapper_env/commands.json`):
+Package 2 (`tools/envoy_env/commands.json`):
 
 ```json
 {
@@ -249,7 +249,7 @@ packages = get_packages(config_file=config)
 # Inspect packages
 for pkg in packages:
     print(f"{pkg.name}: {pkg.root}")
-    print(f"  Wrapper env: {pkg.wrapper_env}")
+    print(f"  Envoy env: {pkg.envoy_env}")
 ```
 
 ### Command Registry with Packages
@@ -292,14 +292,14 @@ Error: No commands loaded
 
 **Solutions**:
 - Verify `DO_PKG_ROOTS` is set correctly
-- Check that packages have `wrapper_env/` directories
+- Check that packages have `envoy_env/` directories
 - Use `--packages-config` with explicit paths
 - Ensure Git repositories have `.git` folders for auto-discovery
 
 ### Package not discovered
 
 **Check**:
-1. Package has `wrapper_env/` directory
+1. Package has `envoy_env/` directory
 2. For auto-discovery: package has `.git/` folder
 3. Package path is in `DO_PKG_ROOTS` or config file
 4. Path separators match OS (`;` Windows, `:` Unix)

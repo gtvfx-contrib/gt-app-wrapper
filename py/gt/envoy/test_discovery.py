@@ -14,7 +14,7 @@ def test_validation():
     examples_path = Path(__file__).parent / "examples"
     print(f"Checking: {examples_path}")
     print(f"  Is valid package: {validate_package(examples_path)}")
-    print(f"  Has wrapper_env: {(examples_path / 'wrapper_env').is_dir()}")
+    print(f"  Has envoy_env: {(examples_path / 'envoy_env').is_dir()}")
     print()
 
 def test_config_loading():
@@ -36,7 +36,7 @@ def test_config_loading():
     print()
 
 def test_auto_discovery():
-    """Test auto-discovery with DO_PKG_ROOTS."""
+    """Test auto-discovery with ENVOY_PKG_ROOTS."""
     import os
     print("Testing auto-discovery...")
     

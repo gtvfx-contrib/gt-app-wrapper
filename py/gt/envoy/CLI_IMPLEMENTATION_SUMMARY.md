@@ -25,7 +25,7 @@ Successfully implemented a CLI-first design for the application wrapper with JSO
 
 ### Command Definition Format
 
-Commands are defined in `wrapper_env/commands.json`:
+Commands are defined in `envoy_env/commands.json`:
 
 ```json
 {
@@ -36,7 +36,7 @@ Commands are defined in `wrapper_env/commands.json`:
 }
 ```
 
-- **environment**: List of environment JSON files to load (relative to wrapper_env/)
+- **environment**: List of environment JSON files to load (relative to envoy_env/)
 - **alias** (optional): 
   - If provided: First element is the executable, rest are base arguments
   - If not provided: command_name must be an executable on PATH
@@ -94,7 +94,7 @@ This allows calling commands directly: `python_dev.bat --version`
 
 ### Features
 
-1. **Auto-Discovery**: CLI searches up directory tree for wrapper_env/commands.json
+1. **Auto-Discovery**: CLI searches up directory tree for envoy_env/commands.json
 2. **Flexible Arguments**: Commands accept arbitrary arguments that passthrough
 3. **Environment Management**: Automatically loads and applies environment files
 4. **Verbose Mode**: Optional detailed logging of environment loading and execution
@@ -155,7 +155,7 @@ gt/app/wrapper/py/gt/app/wrapper/
     ├── examples.py
     ├── CLI_USAGE.md (NEW - usage documentation)
     ├── python_dev.bat (NEW - batch file example)
-    └── wrapper_env/
+    └── envoy_env/
         ├── commands.json (NEW - command definitions)
         ├── example_env.json
         └── test_list_paths.json
