@@ -19,7 +19,7 @@ class EnvironmentManager:
     Handles:
     - Loading environment from JSON files
     - Variable expansion with {$VARNAME} syntax
-    - Special wrapper variables like {$__PACKAGE__}
+    - Special wrapper variables like {$__BUNDLE__}
     - Path normalization (Unix → Windows)
     - List-based paths with automatic joining
     - Append (+=) and prepend (^=) operators
@@ -47,9 +47,9 @@ class EnvironmentManager:
         Also supports special wrapper-internal variables with __ prefix/suffix.
         
         Special variables:
-            {$__PACKAGE__}      - Root directory of the package (parent of envoy_env/)
-            {$__PACKAGE_ENV__}  - The envoy_env/ directory itself
-            {$__PACKAGE_NAME__} - Name of the package (directory name)
+            {$__BUNDLE__}      - Root directory of the bundle (parent of envoy_env/)
+            {$__BUNDLE_ENV__}  - The envoy_env/ directory itself
+            {$__BUNDLE_NAME__} - Name of the bundle (directory name)
             {$__FILE__}         - Current environment JSON file being processed
         
         Lookup priority:
@@ -149,12 +149,9 @@ class EnvironmentManager:
         """Calculate special wrapper-internal variables for an environment file.
         
         Special variables:
-            __PACKAGE__      - Root directory of the package (parent of envoy_env/)
-            __PACKAGE_ENV__  - The envoy_env/ directory itself
-            __PACKAGE_NAME__ - Name of the package (directory name)
-            __FILE__         - Current environment JSON file being processed
-        
-        Args:
+            __BUNDLE__      - Root directory of the bundle (parent of envoy_env/)
+            __BUNDLE_ENV__  - The envoy_env/ directory itself
+            __BUNDLE_NAME__ - Name of the bundle (directory name)
             env_file_path: Path to the environment JSON file
             
         Returns:
@@ -175,7 +172,7 @@ class EnvironmentManager:
                 package_root = parent.parent
                 break
         
-        # If no envoy_env/ directory found, use file's parent as package root
+        # If no envoy_env/ directory found, use file's parent as bundle root
         if package_root is None:
             package_root = env_file_abs.parent
             package_env_dir = package_root
@@ -185,9 +182,9 @@ class EnvironmentManager:
         # to backslashes on Windows during normalize_path processing
         special_vars = {
             '__FILE__': str(env_file_abs).replace('\\', '/'),
-            '__PACKAGE__': str(package_root).replace('\\', '/'),
-            '__PACKAGE_ENV__': str(package_env_dir).replace('\\', '/'),
-            '__PACKAGE_NAME__': package_root.name,
+            '__BUNDLE__': str(package_root).replace('\\', '/'),
+            '__BUNDLE_ENV__': str(package_env_dir).replace('\\', '/'),
+            '__BUNDLE_NAME__': package_root.name,
         }
         
         return special_vars
@@ -207,12 +204,12 @@ class EnvironmentManager:
             Prepend:  "^=PYTHONPATH": "R:/new/path"
             Replace:  "PYTHONPATH": "R:/new/path"
             Variable: "PYTHONPATH": "{$PYTHONPATH};R:/new/path"
-            Special:  "PATH": "{$__PACKAGE__}/bin"
+            Special:  "PATH": "{$__BUNDLE__}/bin"
         
         Special wrapper variables:
-            {$__PACKAGE__}      - Root directory of the package (parent of envoy_env/)
-            {$__PACKAGE_ENV__}  - The envoy_env/ directory itself
-            {$__PACKAGE_NAME__} - Name of the package (directory name)
+            {$__BUNDLE__}      - Root directory of the bundle (parent of envoy_env/)
+            {$__BUNDLE_ENV__}  - The envoy_env/ directory itself
+            {$__BUNDLE_NAME__} - Name of the bundle (directory name)
             {$__FILE__}         - Current environment JSON file path
         
         Paths can use Unix-style forward slashes, automatically converted on Windows.

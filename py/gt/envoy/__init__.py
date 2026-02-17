@@ -28,10 +28,10 @@ from ._commands import (
     find_commands_file
 )
 from ._discovery import (
-    PackageInfo,
-    get_packages,
-    discover_packages_auto,
-    load_packages_from_config
+    BundleInfo,
+    get_bundles,
+    discover_bundles_auto,
+    load_bundles_from_config
 )
 from ._cli import main as cli_main
 
@@ -57,9 +57,9 @@ __all__ = [
     'find_commands_file',
     'cli_main',
     
-    # Package discovery
-    'PackageInfo',
-    'get_packages',
-    'discover_packages_auto',
-    'load_packages_from_config',
+    # Bundle discovery
+    'BundleInfo',
+    'get_bundles',
+    'discover_bundles_auto',
+    'load_bundles_from_config',
 ]

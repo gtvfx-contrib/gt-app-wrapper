@@ -1,6 +1,6 @@
 # Envoy
 
-**Environment orchestration for applications** — A CLI-first tool for managing complex application environments with JSON-based configuration and multi-package support.
+**Environment orchestration for applications** — A CLI-first tool for managing complex application environments with JSON-based configuration and multi-bundle support.
 
 ## Overview
 
@@ -9,12 +9,12 @@ Envoy simplifies the execution of applications that require specific environment
 ### Key Features
 
 - 🚀 **CLI-First Design** - Simple command-line interface for running applications
-- 📦 **Multi-Package Support** - Aggregate commands from multiple Git repositories
+- 📦 **Multi-Bundle Support** - Aggregate commands from multiple Git repositories
 - 🔧 **Environment Management** - JSON-based environment variable configuration
-- 🔍 **Auto-Discovery** - Automatic package detection via `ENVOY_PKG_ROOTS`
+- 🔍 **Auto-Discovery** - Automatic bundle detection via `ENVOY_BNDL_ROOTS`
 - 🎯 **Command Aliases** - Map friendly names to complex command invocations
 - 🔗 **Path Normalization** - Automatic Unix-style path handling across platforms
-- 📝 **Special Variables** - Built-in package-relative path variables
+- 📝 **Special Variables** - Built-in bundle-relative path variables
 - 🐛 **Debug Mode** - Verbose logging with `--verbose` flag
 
 ## Quick Start
@@ -56,13 +56,13 @@ envoy --verbose python_dev script.py
 
 ## Core Concepts
 
-### 1. Packages
+### 1. Bundles
 
-A **package** is a Git repository containing an `envoy_env/` directory. Each package can define:
+A **bundle** is a Git repository containing an `envoy_env/` directory. Each bundle can define:
 - Commands in `envoy_env/commands.json`
 - Environment files (JSON) in `envoy_env/`
 
-Example package structure:
+Example bundle structure:
 ```
 my-app/
 ├── .git/
@@ -98,8 +98,8 @@ Environment files define variable modifications using JSON:
 
 ```json
 {
-  "PYTHONPATH": "+=PATH:{$__PACKAGE__}/src",
-  "MY_APP_ROOT": "{$__PACKAGE__}",
+  "PYTHONPATH": "+=PATH:{$__BUNDLE__}/src",
+  "MY_APP_ROOT": "{$__BUNDLE__}",
   "DEBUG": "1"
 }
 ```
@@ -111,31 +111,31 @@ Environment files define variable modifications using JSON:
 - `"+=VAR": "value"` — Append to variable
 
 **Special Variables:**
-- `{$__PACKAGE__}` — Package root directory (parent of `envoy_env/`)
-- `{$__PACKAGE_ENV__}` — The `envoy_env/` directory
-- `{$__PACKAGE_NAME__}` — Package directory name
+- `{$__BUNDLE__}` — Bundle root directory (parent of `envoy_env/`)
+- `{$__BUNDLE_ENV__}` — The `envoy_env/` directory
+- `{$__BUNDLE_NAME__}` — Bundle directory name
 - `{$__FILE__}` — Current environment JSON file path
 - `{$VARNAME}` — Reference existing environment variables
 
 See [ENV_FILES_README.md](py/gt/envoy/examples/envoy_env/ENV_FILES_README.md) for detailed documentation.
 
-## Package Discovery
+## Bundle Discovery
 
-Envoy discovers packages in two ways:
+Envoy discovers bundles in two ways:
 
 ### Auto-Discovery (Recommended)
 
-Set the `ENVOY_PKG_ROOTS` environment variable to semicolon-separated root directories:
+Set the `ENVOY_BNDL_ROOTS` environment variable to semicolon-separated root directories:
 
 ```bash
 # Windows
-set ENVOY_PKG_ROOTS=R:/repo/packages;C:/tools
+set ENVOY_BNDL_ROOTS=R:/repo/bundles;C:/tools
 
 # PowerShell
-$env:ENVOY_PKG_ROOTS="R:/repo/packages;C:/tools"
+$env:ENVOY_BNDL_ROOTS="R:/repo/bundles;C:/tools"
 
 # Unix/Linux
-export ENVOY_PKG_ROOTS=/repo/packages:/tools
+export ENVOY_BNDL_ROOTS=/repo/bundles:/tools
 ```
 
 Envoy will:
@@ -145,11 +145,11 @@ Envoy will:
 
 ### Config File (Alternative)
 
-Create a `packages.json` file:
+Create a `bundles.json` file:
 
 ```json
 {
-  "packages": [
+  "bundles": [
     "R:/repo/my-app",
     "R:/repo/build-tools",
     "C:/tools/deploy-tools"
@@ -169,10 +169,10 @@ Or as a direct array:
 
 Use with:
 ```bash
-envoy --packages-config packages.json --list
+envoy --bundles-config bundles.json --list
 ```
 
-See [PACKAGE_DISCOVERY.md](py/gt/envoy/PACKAGE_DISCOVERY.md) for detailed information.
+See [BUNDLE_DISCOVERY.md](py/gt/envoy/BUNDLE_DISCOVERY.md) for detailed information.
 
 ## Real-World Examples
 
@@ -191,7 +191,7 @@ See [PACKAGE_DISCOVERY.md](py/gt/envoy/PACKAGE_DISCOVERY.md) for detailed inform
 **envoy_env/python_env.json:**
 ```json
 {
-  "PYTHONPATH": "+=PATH:{$__PACKAGE__}/src",
+  "PYTHONPATH": "+=PATH:{$__BUNDLE__}/src",
   "PYTHONDONTWRITEBYTECODE": "1",
   "PYTHONUTF8": "1"
 }
@@ -216,7 +216,7 @@ envoy python_dev script.py
 **envoy_env/unreal_env.json:**
 ```json
 {
-  "UE_ROOT": "{$__PACKAGE__}/UnrealEngine",
+  "UE_ROOT": "{$__BUNDLE__}/UnrealEngine",
   "PATH": "+=PATH:{$UE_ROOT}/Engine/Binaries/Win64"
 }
 ```
@@ -226,14 +226,14 @@ envoy python_dev script.py
 envoy unreal -project MyGame.uproject
 ```
 
-### Example 3: Multi-Package Build System
+### Example 3: Multi-Bundle Build System
 
-With `ENVOY_PKG_ROOTS=R:/repo` containing:
+With `ENVOY_BNDL_ROOTS=R:/repo` containing:
 - `R:/repo/build-tools/envoy_env/commands.json` — Defines `build`, `test`
 - `R:/repo/deploy-tools/envoy_env/commands.json` — Defines `deploy`, `package`
 
 ```bash
-# List all commands from both packages
+# List all commands from both bundles
 envoy --list
 
 # Available commands:
@@ -242,7 +242,7 @@ envoy --list
 #   deploy   [deploy-tools]
 #   package  [deploy-tools]
 
-# Run command from any package
+# Run command from any bundle
 envoy build --target Release
 envoy deploy --env production
 ```
@@ -252,7 +252,7 @@ envoy deploy --env production
 ```
 usage: envoy [-h] [--list] [--info COMMAND] [--which COMMAND]
              [--commands-file COMMANDS_FILE]
-             [--packages-config PACKAGES_CONFIG] [--verbose]
+             [--bundles-config BUNDLES_CONFIG] [--verbose]
              [command] [args ...]
 
 Options:
@@ -261,8 +261,8 @@ Options:
   --info COMMAND        Show detailed information about a command
   --which COMMAND       Show the resolved executable path for a command
   --commands-file PATH  Path to commands.json (auto-detected by default)
-  --packages-config PATH
-                        Path to packages config file
+  --bundles-config PATH
+                        Path to bundles config file
   --verbose, -v         Enable verbose logging
 
 Arguments:
@@ -276,11 +276,11 @@ See [CLI_USAGE.md](examples/CLI_USAGE.md) for detailed CLI documentation.
 
 ### Command Conflicts
 
-When multiple packages define the same command name, the last discovered package wins. Use `--verbose` to see conflict warnings:
+When multiple bundles define the same command name, the last discovered bundle wins. Use `--verbose` to see conflict warnings:
 
 ```bash
 envoy --verbose --list
-# WARNING: Command 'build' from package-b overrides existing command from package-a
+# WARNING: Command 'build' from bundle-b overrides existing command from bundle-a
 ```
 
 ### Environment File Chaining
@@ -290,7 +290,7 @@ Environment files are loaded in order, with later files able to reference earlie
 ```json
 // base_env.json
 {
-  "APP_ROOT": "{$__PACKAGE__}"
+  "APP_ROOT": "{$__BUNDLE__}"
 }
 
 // dev_env.json
@@ -302,7 +302,7 @@ Environment files are loaded in order, with later files able to reference earlie
 
 ### Local Fallback
 
-If no packages are discovered, Envoy searches for `envoy_env/commands.json` in the current directory and parent directories, allowing per-project command definitions.
+If no bundles are discovered, Envoy searches for `envoy_env/commands.json` in the current directory and parent directories, allowing per-project command definitions.
 
 ## Project Structure
 
@@ -316,14 +316,14 @@ envoy/
 │           ├── __main__.py     # Module entry point
 │           ├── _cli.py         # CLI implementation
 │           ├── _commands.py    # Command registry
-│           ├── _discovery.py   # Package discovery
+│           ├── _discovery.py   # Bundle discovery
 │           ├── _environment.py # Environment processing
 │           ├── _wrapper.py     # Application wrapper
 │           └── examples/
 │               └── envoy_env/  # Example configurations
 ├── examples/
 │   ├── CLI_USAGE.md
-│   ├── packages.json           # Example package config
+│   ├── bundles.json            # Example bundle config
 │   └── python_dev.bat          # Example wrapper script
 └── README.md                   # This file
 ```
@@ -331,7 +331,7 @@ envoy/
 ## Documentation
 
 - **[CLI_USAGE.md](examples/CLI_USAGE.md)** — Detailed CLI usage guide
-- **[PACKAGE_DISCOVERY.md](py/gt/envoy/PACKAGE_DISCOVERY.md)** — Package discovery system
+- **[BUNDLE_DISCOVERY.md](py/gt/envoy/BUNDLE_DISCOVERY.md)** — Bundle discovery system
 - **[ENV_FILES_README.md](py/gt/envoy/examples/envoy_env/ENV_FILES_README.md)** — Environment file format
 - **[CLI_IMPLEMENTATION_SUMMARY.md](py/gt/envoy/CLI_IMPLEMENTATION_SUMMARY.md)** — Implementation details
 
@@ -343,18 +343,18 @@ Envoy is part of the GT Tools collection. See `LICENSE` for details.
 
 **"Error: Could not find commands.json"**
 - Ensure you're in a directory with `envoy_env/commands.json`, or
-- Set `ENVOY_PKG_ROOTS` to point to package root directories, or
-- Use `--packages-config` to specify a package configuration file
+- Set `ENVOY_BNDL_ROOTS` to point to bundle root directories, or
+- Use `--bundles-config` to specify a bundle configuration file
 
 **Commands not appearing in --list**
-- Check that packages have `envoy_env/` directories
+- Check that bundles have `envoy_env/` directories
 - Use `--verbose` to see discovery debug information
 - Verify Git repositories are valid (have `.git/` directory)
 
 **Environment variables not applying**
 - Check JSON syntax in environment files
 - Use `--verbose` to see environment processing
-- Verify paths use forward slashes: `{$__PACKAGE__}/src`
+- Verify paths use forward slashes: `{$__BUNDLE__}/src`
 
 **Need help?**
-Run with `--verbose` to see detailed logging of package discovery, command loading, and environment processing.
+Run with `--verbose` to see detailed logging of bundle discovery, command loading, and environment processing.

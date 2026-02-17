@@ -3,7 +3,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 from ._exceptions import WrapperError
 
@@ -18,7 +17,7 @@ class CommandDefinition:
         name: Command name (the JSON key)
         environment: List of environment JSON files to load
         alias: Optional list of command parts to execute instead of command name
-        package: Optional package name this command comes from
+        bundle: Optional bundle name this command comes from
         envoy_env_dir: Directory containing environment files
         
     """
@@ -28,7 +27,7 @@ class CommandDefinition:
         name: str,
         environment: list[str],
         alias: list[str] | None = None,
-        package: str | None = None,
+        bundle: str | None = None,
         envoy_env_dir: Path | None = None
     ):
         """Initialize command definition.
@@ -37,14 +36,14 @@ class CommandDefinition:
             name: Command name
             environment: List of environment file names
             alias: Optional alias command parts (e.g., ["python", "-m", "module"])
-            package: Optional package name this command belongs to
+            bundle: Optional bundle name this command belongs to
             envoy_env_dir: Optional directory containing environment files
             
         """
         self.name = name
         self.environment = environment
         self.alias = alias
-        self.package = package
+        self.bundle = bundle
         self.envoy_env_dir = envoy_env_dir
     
     @property
@@ -74,8 +73,8 @@ class CommandDefinition:
     def __repr__(self) -> str:
         """String representation."""
         alias_str = f" (alias: {' '.join(self.alias)})" if self.alias else ""
-        pkg_str = f" from {self.package}" if self.package else ""
-        return f"CommandDefinition({self.name}{alias_str}, env={self.environment}{pkg_str})"
+        bundle_str = f" from {self.bundle}" if self.bundle else ""
+        return f"CommandDefinition({self.name}{alias_str}, env={self.environment}{bundle_str})"
 
 
 class CommandRegistry:
@@ -89,16 +88,16 @@ class CommandRegistry:
             
         """
         self._commands: dict[str, CommandDefinition] = {}
-        self._package_sources: dict[str, str] = {}  # cmd_name -> package_name
+        self._bundle_sources: dict[str, str] = {}  # cmd_name -> bundle_name
         if commands_file:
             self.load_from_file(commands_file)
     
-    def load_from_file(self, commands_file: Path, package_name: str | None = None) -> None:
+    def load_from_file(self, commands_file: Path, bundle_name: str | None = None) -> None:
         """Load commands from a JSON file.
         
         Args:
             commands_file: Path to commands.json
-            package_name: Optional package name for tracking command source
+            bundle_name: Optional bundle name for tracking command source
             
         Raises:
             WrapperError: If file cannot be read or parsed
@@ -142,43 +141,43 @@ class CommandRegistry:
                     name=cmd_name,
                     environment=environment,
                     alias=alias,
-                    package=package_name,
+                    bundle=bundle_name,
                     envoy_env_dir=wrapper_env_dir
                 )
                 
                 # Track conflicts
                 if cmd_name in self._commands:
-                    existing_pkg = self._package_sources.get(cmd_name, 'unknown')
+                    existing_bundle = self._bundle_sources.get(cmd_name, 'unknown')
                     log.warning(
-                        f"Command '{cmd_name}' from {package_name or 'local'} "
-                        f"overrides existing command from {existing_pkg}"
+                        f"Command '{cmd_name}' from {bundle_name or 'local'} "
+                        f"overrides existing command from {existing_bundle}"
                     )
                 
                 self._commands[cmd_name] = cmd_def
-                self._package_sources[cmd_name] = package_name or 'local'
+                self._bundle_sources[cmd_name] = bundle_name or 'local'
             
-            pkg_label = f" from package '{package_name}'" if package_name else ""
-            log.info(f"Loaded {len(commands_data)} command(s) from {commands_file}{pkg_label}")
+            bundle_label = f" from bundle '{bundle_name}'" if bundle_name else ""
+            log.info(f"Loaded {len(commands_data)} command(s) from {commands_file}{bundle_label}")
             
         except json.JSONDecodeError as e:
             raise WrapperError(f"Invalid JSON in commands file {commands_file}: {e}") from e
         except Exception as e:
             raise WrapperError(f"Error reading commands file {commands_file}: {e}") from e
     
-    def load_from_packages(self, packages: list) -> None:
-        """Load commands from multiple packages.
+    def load_from_bundles(self, bundles: list) -> None:
+        """Load commands from multiple bundles.
         
         Args:
-            packages: List of PackageInfo objects from discovery
+            bundles: List of BundleInfo objects from discovery
             
         """
-        for package in packages:
-            commands_file = package.envoy_env / "commands.json"
+        for bundle in bundles:
+            commands_file = bundle.envoy_env / "commands.json"
             if commands_file.exists():
                 try:
-                    self.load_from_file(commands_file, package_name=package.name)
+                    self.load_from_file(commands_file, bundle_name=bundle.name)
                 except WrapperError as e:
-                    log.warning(f"Failed to load commands from {package.name}: {e}")
+                    log.warning(f"Failed to load commands from bundle {bundle.name}: {e}")
     
     def get(self, command_name: str) -> CommandDefinition | None:
         """Get a command definition by name.

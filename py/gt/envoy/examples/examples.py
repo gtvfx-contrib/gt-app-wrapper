@@ -193,7 +193,7 @@ def example_working_directory():
     print("WORKING DIRECTORY EXAMPLE")
     print("=" * 60)
     
-    temp_dir = Path(__file__).parent.parent / "test_package" / "temp"
+    temp_dir = Path(__file__).parent.parent / "test_bundle" / "temp"
     temp_dir.mkdir(exist_ok=True)
     
     config = WrapperConfig(
@@ -220,7 +220,7 @@ def example_env_from_files():
     import json
     
     # Create temporary environment files
-    temp_dir = Path(__file__).parent.parent / "test_package" / "temp"
+    temp_dir = Path(__file__).parent.parent / "test_bundle" / "temp"
     temp_dir.mkdir(exist_ok=True)
     
     # Base environment
@@ -281,7 +281,7 @@ def example_list_paths():
     import json
     
     # Create temporary environment file
-    temp_dir = Path(__file__).parent.parent / "test_package" / "temp"
+    temp_dir = Path(__file__).parent.parent / "test_bundle" / "temp"
     temp_dir.mkdir(exist_ok=True)
     
     # Define paths as lists using Unix format (/)
@@ -365,7 +365,7 @@ def example_env_append_prepend():
     import json
     
     # Create temporary environment files
-    temp_dir = Path(__file__).parent.parent / "test_package" / "temp"
+    temp_dir = Path(__file__).parent.parent / "test_bundle" / "temp"
     temp_dir.mkdir(exist_ok=True)
     
     # Set a base PYTHONPATH for demonstration
@@ -455,33 +455,33 @@ print(f"NEW_VAR: {os.environ.get('NEW_VAR')}")
     print()
 
 def example_special_variables():
-    """Example using special wrapper variables like {$__PACKAGE__}."""
+    """Example using special wrapper variables like {$__BUNDLE__}."""
     print("=" * 60)
     print("SPECIAL WRAPPER VARIABLES EXAMPLE")
     print("=" * 60)
     
     import json
     
-    # Create a package structure with envoy_env directory
-    temp_dir = Path(__file__).parent.parent / "test_package" / "temp"
+    # Create a bundle structure with envoy_env directory
+    temp_dir = Path(__file__).parent.parent / "test_bundle" / "temp"
     temp_dir.mkdir(exist_ok=True)
     
-    # Create package directory structure
-    package_dir = temp_dir / "my_package"
-    package_dir.mkdir(exist_ok=True)
-wrapper_env_dir = package_dir / "envoy_env"
+    # Create bundle directory structure
+    bundle_dir = temp_dir / "my_bundle"
+    bundle_dir.mkdir(exist_ok=True)
+wrapper_env_dir = bundle_dir / "envoy_env"
     wrapper_env_dir.mkdir(exist_ok=True)
     
     # Create environment file using special variables
     env_config = {
         "+=PYTHONPATH": [
-            "{$__PACKAGE__}/py",
-            "{$__PACKAGE__}/lib/python"
+            "{$__BUNDLE__}/py",
+            "{$__BUNDLE__}/lib/python"
         ],
-        "+=PATH": "{$__PACKAGE__}/bin",
-        "APP_ROOT": "{$__PACKAGE__}",
-        "APP_NAME": "{$__PACKAGE_NAME__}",
-        "CONFIG_FILE": "{$__PACKAGE__}/config/app.conf",
+        "+=PATH": "{$__BUNDLE__}/bin",
+        "APP_ROOT": "{$__BUNDLE__}",
+        "APP_NAME": "{$__BUNDLE_NAME__}",
+        "CONFIG_FILE": "{$__BUNDLE__}/config/app.conf",
         "ENV_FILE_PATH": "{$__FILE__}"
     }
     
@@ -503,7 +503,7 @@ print()
 print("PYTHONPATH additions:")
 pythonpath = os.environ.get('PYTHONPATH', '')
 for p in pythonpath.split(';' if sys.platform == 'win32' else ':'):
-    if 'my_package' in p and p:
+    if 'my_bundle' in p and p:
         print(f"  - {p}")
 print()
 print(f"ENV_FILE_PATH: {os.environ.get('ENV_FILE_PATH')}")
@@ -518,9 +518,9 @@ print(f"ENV_FILE_PATH: {os.environ.get('ENV_FILE_PATH')}")
     result = wrapper.run()
     
     print("Special variables available:")
-    print("  {$__PACKAGE__}      - Package root (parent of envoy_env/)")
-    print("  {$__PACKAGE_ENV__}  - The envoy_env/ directory")
-    print("  {$__PACKAGE_NAME__} - Package directory name")
+    print("  {$__BUNDLE__}      - Bundle root (parent of envoy_env/)")
+    print("  {$__BUNDLE_ENV__}  - The envoy_env/ directory")
+    print("  {$__BUNDLE_NAME__} - Bundle directory name")
     print("  {$__FILE__}         - Current env file path")
     print()
     print(f"Output:\n{result.stdout}")
@@ -533,7 +533,7 @@ print(f"ENV_FILE_PATH: {os.environ.get('ENV_FILE_PATH')}")
     
     # Cleanup
     import shutil
-    shutil.rmtree(package_dir)
+    shutil.rmtree(bundle_dir)
     print()
 
 def example_real_world_scenario():

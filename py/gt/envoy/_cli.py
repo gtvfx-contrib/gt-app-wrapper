@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 from ._commands import CommandRegistry, find_commands_file
-from ._discovery import get_packages, PackageInfo
+from ._discovery import get_bundles, BundleInfo
 from ._environment import EnvironmentManager
 from ._executor import ProcessExecutor
 from ._wrapper import ApplicationWrapper
@@ -55,13 +55,13 @@ def list_commands(registry: CommandRegistry) -> int:
         cmd = registry.get(cmd_name)
         if cmd:
             # Build command display
-            pkg_str = f" [{cmd.package}]" if cmd.package else ""
+            bundle_str = f" [{cmd.bundle}]" if cmd.bundle else ""
             
             if cmd.alias:
                 alias_str = " ".join(cmd.alias)
-                print(f"  {cmd_name:<20} → {alias_str}{pkg_str}")
+                print(f"  {cmd_name:<20} → {alias_str}{bundle_str}")
             else:
-                print(f"  {cmd_name:<20} (executable on PATH){pkg_str}")
+                print(f"  {cmd_name:<20} (executable on PATH){bundle_str}")
     
     return 0
 
@@ -85,8 +85,8 @@ def show_command_info(registry: CommandRegistry, command_name: str) -> int:
     
     print(f"Command: {command_name}")
     
-    if cmd.package:
-        print(f"Package: {cmd.package}")
+    if cmd.bundle:
+        print(f"Bundle: {cmd.bundle}")
     
     print(f"Executable: {cmd.executable}")
     
@@ -154,7 +154,7 @@ def run_command(
     registry: CommandRegistry,
     command_name: str,
     args: list[str],
-    packages: list[PackageInfo] | None = None,
+    bundles: list[BundleInfo] | None = None,
     verbose: bool = False
 ) -> int:
     """Run a command from the registry.
@@ -163,7 +163,7 @@ def run_command(
         registry: Command registry
         command_name: Name of command to run
         args: Arguments to pass to the command
-        packages: List of discovered packages (for multi-package env file search)
+        bundles: List of discovered bundles (for multi-bundle env file search)
         verbose: Enable verbose output
         
     Returns:
@@ -180,11 +180,11 @@ def run_command(
     # Collect environment files
     env_files = []
     
-    if packages:
-        # Multi-package mode: search for each env file across ALL packages
+    if bundles:
+        # Multi-bundle mode: search for each env file across ALL bundles
         for env_file_name in cmd.environment:
-            for package in packages:
-                env_file_path = package.envoy_env / env_file_name
+            for bundle in bundles:
+                env_file_path = bundle.envoy_env / env_file_name
                 if env_file_path.exists():
                     env_files.append(str(env_file_path))
                     log.debug(f"Found environment file: {env_file_path}")
@@ -270,15 +270,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     
     parser.add_argument(
-        '--commands-file',
+        '--commands-file', '-cf',
         type=Path,
         help='Path to commands.json file (auto-detected if not specified)'
     )
     
     parser.add_argument(
-        '--packages-config',
+        '--bundles-config', '-bc',
         type=Path,
-        help='Path to packages config file (auto-discovers from ENVOY_PKG_ROOTS if not specified)'
+        help='Path to bundles config file (auto-discovers from ENVOY_BNDL_ROOTS if not specified)'
     )
     
     parser.add_argument(
@@ -314,21 +314,21 @@ def main(argv: list[str] | None = None) -> int:
     
     # Initialize command registry
     registry = CommandRegistry()
-    packages = None  # Track discovered packages for env file resolution
+    bundles = None  # Track discovered bundles for env file resolution
     
     # Determine command loading strategy
-    if args.packages_config:
-        # Load from packages config file
+    if args.bundles_config:
+        # Load from bundles config file
         try:
-            discovered_packages = get_packages(config_file=args.packages_config)
-            if discovered_packages:
-                log.info(f"Discovered {len(discovered_packages)} package(s) from config file")
-                registry.load_from_packages(discovered_packages)
-                packages = discovered_packages
+            discovered_bundles = get_bundles(config_file=args.bundles_config)
+            if discovered_bundles:
+                log.info(f"Discovered {len(discovered_bundles)} bundle(s) from config file")
+                registry.load_from_bundles(discovered_bundles)
+                bundles = discovered_bundles
             else:
-                log.warning("No packages found in config file")
+                log.warning("No bundles found in config file")
         except WrapperError as e:
-            print(f"Error loading packages config: {e}", file=sys.stderr)
+            print(f"Error loading bundles config: {e}", file=sys.stderr)
             return 1
     elif args.commands_file:
         # Load from specific commands file (legacy mode)
@@ -341,17 +341,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Error loading commands: {e}", file=sys.stderr)
             return 1
     else:
-        # Try package auto-discovery first
+        # Try bundle auto-discovery first
         try:
-            discovered_packages = get_packages()
-            if discovered_packages:
-                log.info(f"Auto-discovered {len(discovered_packages)} package(s)")
-                registry.load_from_packages(discovered_packages)
-                packages = discovered_packages
+            discovered_bundles = get_bundles()
+            if discovered_bundles:
+                log.info(f"Auto-discovered {len(discovered_bundles)} bundle(s)")
+                registry.load_from_bundles(discovered_bundles)
+                bundles = discovered_bundles
         except WrapperError as e:
-            log.debug(f"Package auto-discovery failed: {e}")
+            log.debug(f"Bundle auto-discovery failed: {e}")
         
-        # Fall back to local commands.json if no packages found
+        # Fall back to local commands.json if no bundles found
         if len(registry) == 0:
             commands_file = find_commands_file()
             if commands_file:
@@ -363,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print("Error: Could not find commands.json", file=sys.stderr)
                 print("Searched for envoy_env/commands.json in current directory and parents", file=sys.stderr)
-                print("Or set ENVOY_PKG_ROOTS environment variable for auto-discovery", file=sys.stderr)
+                print("Or set ENVOY_BNDL_ROOTS environment variable for auto-discovery", file=sys.stderr)
                 return 1
     
     # Check if we have any commands
@@ -393,7 +393,7 @@ def main(argv: list[str] | None = None) -> int:
         registry=registry,
         command_name=args.command,
         args=args.args,
-        packages=packages,
+        bundles=bundles,
         verbose=args.verbose
     )
 

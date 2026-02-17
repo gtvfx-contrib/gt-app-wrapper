@@ -55,36 +55,36 @@ You can append or prepend to existing environment variables using two methods:
 
 ### Special Wrapper Variables
 
-The wrapper provides special internal variables that resolve to package-relative paths:
+The wrapper provides special internal variables that resolve to bundle-relative paths:
 
 **Available Special Variables:**
-- `{$__PACKAGE__}` - Root directory of the package (parent of `envoy_env/` directory)
-- `{$__PACKAGE_ENV__}` - The `envoy_env/` directory itself
-- `{$__PACKAGE_NAME__}` - Name of the package (directory name)
+- `{$__BUNDLE__}` - Root directory of the bundle (parent of `envoy_env/` directory)
+- `{$__BUNDLE_ENV__}` - The `envoy_env/` directory itself
+- `{$__BUNDLE_NAME__}` - Name of the bundle (directory name)
 - `{$__FILE__}` - Path to the current environment JSON file
 
 **Example:**
 ```json
 {
   "+=PYTHONPATH": [
-    "{$__PACKAGE__}/py",
-    "{$__PACKAGE__}/lib/python"
+    "{$__BUNDLE__}/py",
+    "{$__BUNDLE__}/lib/python"
   ],
-  "+=PATH": "{$__PACKAGE__}/bin",  
-  "APP_ROOT": "{$__PACKAGE__}",
-  "APP_NAME": "{$__PACKAGE_NAME__}",
-  "CONFIG_PATH": "{$__PACKAGE__}/config"
+  "+=PATH": "{$__BUNDLE__}/bin",  
+  "APP_ROOT": "{$__BUNDLE__}",
+  "APP_NAME": "{$__BUNDLE_NAME__}",
+  "CONFIG_PATH": "{$__BUNDLE__}/config"
 }
 ```
 
-**Package Structure:**
+**Bundle Structure:**
 ```
-my-package/
+my-bundle/
 ├── envoy_env/
 │   └── base.json    ← {$__FILE__} points here
-│                    ← {$__PACKAGE_ENV__} points to envoy_env/
-├── bin/             ← {$__PACKAGE__} points to my-package/
-├── py/              ← {$__PACKAGE_NAME__} = "my-package"
+│                    ← {$__BUNDLE_ENV__} points to envoy_env/
+├── bin/             ← {$__BUNDLE__} points to my-bundle/
+├── py/              ← {$__BUNDLE_NAME__} = "my-bundle"
 └── config/
 ```
 

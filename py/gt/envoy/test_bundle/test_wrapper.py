@@ -8,7 +8,7 @@ from pathlib import Path
 # Add the module to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-from gt.app.wrapper import (
+from gt.envoy import (
     ApplicationWrapper,
     WrapperConfig,
     ExecutionResult,
