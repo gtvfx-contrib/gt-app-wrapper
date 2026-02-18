@@ -330,10 +330,9 @@ envoy/
 
 ## Documentation
 
-- **[CLI_USAGE.md](examples/CLI_USAGE.md)** — Detailed CLI usage guide
+- **[CLI_USAGE.md](py/gt/envoy/CLI_USAGE.md)** — Detailed CLI usage guide
 - **[BUNDLE_DISCOVERY.md](py/gt/envoy/BUNDLE_DISCOVERY.md)** — Bundle discovery system
 - **[ENV_FILES_README.md](py/gt/envoy/examples/envoy_env/ENV_FILES_README.md)** — Environment file format
-- **[CLI_IMPLEMENTATION_SUMMARY.md](py/gt/envoy/CLI_IMPLEMENTATION_SUMMARY.md)** — Implementation details
 
 ## Contributing
 
