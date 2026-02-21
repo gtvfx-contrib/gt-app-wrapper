@@ -74,6 +74,14 @@ _CORE_ENV_VARS: frozenset[str] = frozenset({
     'XDG_CACHE_HOME',
 })
 
+# Envoy's own environment variables — always carried through so that child
+# processes launched by a command (e.g. a build script that calls envoy again)
+# inherit the same discovery and configuration context.
+_ENVOY_ENV_VARS: frozenset[str] = frozenset({
+    'ENVOY_BNDL_ROOTS',
+    'ENVOY_ALLOWLIST',
+})
+
 
 class EnvironmentManager:
     """Manages environment variable loading, expansion, and preparation.
@@ -417,9 +425,10 @@ class EnvironmentManager:
             # Closed: always seed core OS variables first, then the user allowlist.
             # Core vars (identity, temp, system paths, locale, etc.) are safe to
             # carry through unconditionally and their absence tends to break tools
-            # in unexpected ways.
+            # in unexpected ways.  Envoy's own vars are included so child processes
+            # that invoke envoy again inherit the same discovery context.
             result_env = {}
-            for var in _CORE_ENV_VARS | self.allowlist:
+            for var in _CORE_ENV_VARS | _ENVOY_ENV_VARS | self.allowlist:
                 if var in os.environ:
                     result_env[var] = os.environ[var]
         

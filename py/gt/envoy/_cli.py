@@ -110,7 +110,7 @@ def show_which(
     registry: CommandRegistry,
     command_name: str,
     bundles: list[BundleInfo] | None = None,
-    passthrough: bool = False,
+    inherit_env: bool = False,
     env_allowlist: set[str] | None = None,
 ) -> int:
     """Show the resolved executable path for a command.
@@ -122,7 +122,7 @@ def show_which(
         registry: Command registry
         command_name: Name of command to find
         bundles: Discovered bundles (for multi-bundle env file search)
-        passthrough: Whether to inherit the full system environment
+        inherit_env: Whether to inherit the full system environment
         env_allowlist: System variable names to seed in closed mode
         
     Returns:
@@ -158,7 +158,7 @@ def show_which(
             env_files.append(str(global_env))
         env_files.extend(str(cmd.envoy_env_dir / f) for f in cmd.environment)
     
-    env_mgr = EnvironmentManager(inherit_env=passthrough, allowlist=env_allowlist)
+    env_mgr = EnvironmentManager(inherit_env=inherit_env, allowlist=env_allowlist)
     try:
         env = env_mgr.prepare_environment(env_files=[Path(f) for f in env_files])
     except WrapperError as e:
@@ -181,7 +181,7 @@ def run_command(
     args: list[str],
     bundles: list[BundleInfo] | None = None,
     verbose: bool = False,
-    passthrough: bool = False,
+    inherit_env: bool = False,
     env_allowlist: set[str] | None = None
 ) -> int:
     """Run a command from the registry.
@@ -192,7 +192,7 @@ def run_command(
         args: Arguments to pass to the command
         bundles: List of discovered bundles (for multi-bundle env file search)
         verbose: Enable verbose output
-        passthrough: If True, child process inherits the full system environment
+        inherit_env: If True, child process inherits the full system environment
         env_allowlist: System variable names to inherit in closed mode
         
     Returns:
@@ -259,7 +259,7 @@ def run_command(
         executable=cmd.executable,
         args=full_args,
         env_files=[Path(f) for f in env_files],
-        inherit_env=passthrough,
+        inherit_env=inherit_env,
         env_allowlist=env_allowlist,
         capture_output=False,
         stream_output=False,
@@ -331,7 +331,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     
     parser.add_argument(
-        '--passthrough', '-pt',
+        '--inherit-env', '-ie',
         action='store_true',
         help='Inherit the full system environment (overrides default closed environment mode)'
     )
@@ -428,7 +428,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.info:
         return show_command_info(registry, args.info)
     
-    # Parse allowlist and passthrough — needed by both --which and run.
+    # Parse allowlist and inherit-env — needed by both --which and run.
     allowlist_str = os.environ.get('ENVOY_ALLOWLIST', '')
     env_allowlist = (
         {v.strip() for v in allowlist_str.replace(',', ';').split(';') if v.strip()}
@@ -443,7 +443,7 @@ def main(argv: list[str] | None = None) -> int:
             registry,
             args.which,
             bundles=bundles,
-            passthrough=args.passthrough,
+            inherit_env=args.inherit_env,
             env_allowlist=env_allowlist,
         )
     
@@ -459,7 +459,7 @@ def main(argv: list[str] | None = None) -> int:
         args=args.args,
         bundles=bundles,
         verbose=args.verbose,
-        passthrough=args.passthrough,
+        inherit_env=args.inherit_env,
         env_allowlist=env_allowlist
     )
 

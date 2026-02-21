@@ -1,5 +1,6 @@
 {
-  "packages": [
-    "R:\\repo\\gtvfx-contrib\\gt\\app\\wrapper\\py\\gt\\app\\wrapper\\examples"
+  "bundles": [
+    "R:/repo/gtvfx-contrib/gt/globals",
+    "R:/repo/gtvfx-contrib/gt/pythoncore"
   ]
 }
