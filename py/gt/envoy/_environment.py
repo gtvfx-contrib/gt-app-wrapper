@@ -92,7 +92,7 @@ class EnvironmentManager:
     - Special wrapper variables like {$__BUNDLE__}
     - Path normalization (Unix → Windows)
     - List-based paths with automatic joining
-    - Append (+=) and prepend (^=) operators
+    - Append (+=), prepend (^=), and default (?=) operators
     
     Environment modes:
     - Closed (default): child process receives variables defined in env files,
