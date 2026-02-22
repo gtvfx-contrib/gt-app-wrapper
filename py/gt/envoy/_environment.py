@@ -288,6 +288,7 @@ class EnvironmentManager:
             List:     "PYTHONPATH": ["R:/path1", "R:/path2", "R:/path3"]
             Append:   "+=PYTHONPATH": ["R:/new/path"]
             Prepend:  "^=PYTHONPATH": "R:/new/path"
+            Default:  "?=USER_ROOT": "{$LOCALAPPDATA}/myapp"
             Replace:  "PYTHONPATH": "R:/new/path"
             Variable: "PYTHONPATH": "{$PYTHONPATH};R:/new/path"
             Special:  "PATH": "{$__BUNDLE__}/bin"
@@ -354,9 +355,13 @@ class EnvironmentManager:
                     # Check for operators
                     append_mode = False
                     prepend_mode = False
+                    default_mode = False
                     var_name = key
                     
-                    if key.startswith('+='):
+                    if key.startswith('?='):
+                        default_mode = True
+                        var_name = key[2:]  # Remove ?= prefix
+                    elif key.startswith('+='):
                         append_mode = True
                         var_name = key[2:]  # Remove += prefix
                     elif key.startswith('^='):
@@ -366,8 +371,14 @@ class EnvironmentManager:
                     # Process the value (handles lists, normalization, expansion)
                     processed_value = self.process_env_value(value, merged_env, special_vars)
                     
-                    # Handle append/prepend operations
-                    if append_mode or prepend_mode:
+                    # Handle append/prepend/default operations
+                    if default_mode:
+                        # Default: only set if the variable is not already in scope.
+                        # This lets a system value that bubbled through the allowlist
+                        # (or was set by an earlier file) take precedence.
+                        if var_name not in merged_env:
+                            merged_env[var_name] = processed_value
+                    elif append_mode or prepend_mode:
                         # Only look in merged_env — never fall back to os.environ.
                         # If the variable isn't defined yet it's treated as empty,
                         # making += and ^= equivalent to a plain assignment on first use.
