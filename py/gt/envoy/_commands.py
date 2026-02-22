@@ -18,7 +18,9 @@ class CommandDefinition:
         name: Command name (the JSON key)
         environment: List of environment JSON files to load
         alias: Optional list of command parts to execute instead of command name
-        bundle: Optional bundle name this command comes from
+        bundle: Optional bundle bndlid this command comes from (``'<ns>:<name>'``,
+            e.g. ``'gt:pythoncore'``).  ``None`` for commands loaded from a
+            bare ``commands.json`` without bundle context.
         envoy_env_dir: Directory containing environment files
         
     """
@@ -44,7 +46,7 @@ class CommandDefinition:
         self.name = name
         self.environment = environment
         self.alias = alias
-        self.bundle = bundle
+        self.bundle = bundle  # bndlid string, e.g. 'gt:pythoncore'
         self.envoy_env_dir = envoy_env_dir
     
     @property
@@ -74,8 +76,8 @@ class CommandDefinition:
     def __repr__(self) -> str:
         """String representation."""
         alias_str = f" (alias: {' '.join(self.alias)})" if self.alias else ""
-        bundle_str = f" from {self.bundle}" if self.bundle else ""
-        return f"CommandDefinition({self.name}{alias_str}, env={self.environment}{bundle_str})"
+        bundle_str = f" [{self.bundle}]" if self.bundle else ""
+        return f"CommandDefinition({self.name}{bundle_str}{alias_str}, env={self.environment})"
 
 
 class CommandRegistry:
@@ -89,7 +91,7 @@ class CommandRegistry:
             
         """
         self._commands: dict[str, CommandDefinition] = {}
-        self._bundle_sources: dict[str, str] = {}  # cmd_name -> bundle_name
+        self._bundle_sources: dict[str, str] = {}  # cmd_name -> bundle bndlid
         if commands_file:
             self.load_from_file(commands_file)
     
@@ -98,7 +100,11 @@ class CommandRegistry:
         
         Args:
             commands_file: Path to commands.json
-            bundle_name: Optional bundle name for tracking command source
+            bundle_name: Optional bundle bndlid (e.g. ``'gt:pythoncore'``) used
+                to track command origin and populate
+                :attr:`CommandDefinition.bundle`.  Pass ``None`` for commands
+                loaded directly from a bare ``commands.json`` without a
+                discovered bundle.
             
         Raises:
             WrapperError: If file cannot be read or parsed
@@ -231,16 +237,18 @@ class CommandRegistry:
         """Load commands from multiple bundles.
         
         Args:
-            bundles: List of BundleInfo objects from discovery
+            bundles: List of BundleInfo (or Bundle) objects from discovery.
+                Each entry must expose ``.bndlid``, ``.envoy_env``, and
+                ``.name`` attributes.
             
         """
         for bundle in bundles:
             commands_file = bundle.envoy_env / "commands.json"
             if commands_file.exists():
                 try:
-                    self.load_from_file(commands_file, bundle_name=bundle.name)
+                    self.load_from_file(commands_file, bundle_name=bundle.bndlid)
                 except WrapperError as e:
-                    log.warning(f"Failed to load commands from bundle {bundle.name}: {e}")
+                    log.warning(f"Failed to load commands from bundle {bundle.bndlid}: {e}")
     
     def get(self, command_name: str) -> CommandDefinition | None:
         """Get a command definition by name.

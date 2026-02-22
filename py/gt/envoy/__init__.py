@@ -24,8 +24,12 @@ Quickstart (Python API)::
     env.spawn(['comp.nk'])
 
     # Inspect an individual bundle (analogous to bl.Package)
-    bundle = envoy.Bundle('/repo/gtvfx-contrib/gt/pythoncore')
-    print(bundle.name, bundle.commands)
+    bundle = envoy.Bundle('gt:pythoncore')           # resolve by bndlid via ENVOY_BNDL_ROOTS
+    bundle = envoy.Bundle('/repo/gtvfx-contrib/gt/pythoncore')  # or by path
+    print(bundle.bndlid)    # 'gt:pythoncore'  (namespace inferred from parent dir)
+    print(bundle.name)      # 'pythoncore'
+    print(bundle.namespace) # 'gt'
+    print(bundle.commands)
 
     # Load a bundle config file (analogous to bl.Pipeline)
     cfg = envoy.BundleConfig('/studio/bundles.json')
@@ -77,6 +81,7 @@ from ._discovery import (
     Bundle,
     BundleConfig,
     BUNDLE_CHECKOUT,
+    BUNDLE_DEFAULT_NAMESPACE,
     get_bundles,
     discover_bundles_auto,
     load_bundles_from_config

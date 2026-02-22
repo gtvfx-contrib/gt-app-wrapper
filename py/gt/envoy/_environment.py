@@ -88,8 +88,8 @@ class EnvironmentManager:
     
     Handles:
     - Loading environment from JSON files
-    - Variable expansion with {$VARNAME} syntax
-    - Special wrapper variables like {$__BUNDLE__}
+    - Variable expansion with ${VARNAME} syntax
+    - Special wrapper variables like ${__BUNDLE__}
     - Path normalization (Unix → Windows)
     - List-based paths with automatic joining
     - Append (+=), prepend (^=), and default (?=) operators
@@ -125,14 +125,15 @@ class EnvironmentManager:
     ) -> str:
         """Expand environment variable references in a value string.
         
-        Supports {$VARNAME} syntax to reference existing environment variables.
-        Also supports special wrapper-internal variables with __ prefix/suffix.
+        Supports ``${VARNAME}`` syntax to reference existing environment
+        variables.  The legacy ``{$VARNAME}`` form is also accepted for
+        backward compatibility.
         
         Special variables:
-            {$__BUNDLE__}      - Root directory of the bundle (parent of envoy_env/)
-            {$__BUNDLE_ENV__}  - The envoy_env/ directory itself
-            {$__BUNDLE_NAME__} - Name of the bundle (directory name)
-            {$__FILE__}         - Current environment JSON file being processed
+            ${__BUNDLE__}      - Root directory of the bundle (parent of envoy_env/)
+            ${__BUNDLE_ENV__}  - The envoy_env/ directory itself
+            ${__BUNDLE_NAME__} - Name of the bundle (directory name)
+            ${__FILE__}        - Current environment JSON file being processed
         
         Lookup priority:
         1. Special wrapper variables (if provided)
@@ -143,7 +144,7 @@ class EnvironmentManager:
         references produce empty strings rather than leaking system values.
         
         Args:
-            value: String potentially containing {$VARNAME} references
+            value: String potentially containing ${VARNAME} references
             current_env: Current environment dictionary being built
             special_vars: Special wrapper-internal variables (optional)
             
@@ -151,11 +152,13 @@ class EnvironmentManager:
             Expanded string value
             
         """
-        # Pattern to match {$VARNAME}
-        pattern = re.compile(r'\{\$([A-Za-z_][A-Za-z0-9_]*)\}')
+        # Primary form: ${VARNAME}  (POSIX/shell standard)
+        # Back-compat:  {$VARNAME}  (legacy envoy form)
+        pattern = re.compile(r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\{\$([A-Za-z_][A-Za-z0-9_]*)\}')
         
         def replacer(match):
-            var_name = match.group(1)
+            # Group 1 = ${VAR} style (canonical), group 2 = {$VAR} style (back-compat)
+            var_name = match.group(1) or match.group(2)
             
             # Check special variables first (highest priority)
             if special_vars and var_name in special_vars:
@@ -201,7 +204,7 @@ class EnvironmentManager:
         - Lists: joined with OS path separator
         - Strings: used as-is
         - Other types: converted to string
-        - {$VARNAME} expansion (including special variables)
+        - ${VARNAME} expansion (including special variables)
         - Paths stored in UNIX style (forward slashes) for cross-platform compatibility
         
         Args:
@@ -224,7 +227,7 @@ class EnvironmentManager:
             # Convert to string, keep as-is
             str_value = str(value)
         
-        # Expand any {$VARNAME} references (including special vars)
+        # Expand any ${VARNAME} references (including special vars)
         expanded_value = self.expand_env_value(str_value, merged_env, special_vars)
         
         return expanded_value
@@ -233,11 +236,11 @@ class EnvironmentManager:
     def get_special_variables(env_file_path: Path) -> dict[str, str]:
         """Calculate special wrapper-internal variables for an environment file.
         
-        Special variables:
+        Special variables (available as ``${NAME}`` in env file values):
             __BUNDLE__      - Root directory of the bundle (parent of envoy_env/)
             __BUNDLE_ENV__  - The envoy_env/ directory itself
             __BUNDLE_NAME__ - Name of the bundle (directory name)
-            env_file_path: Path to the environment JSON file
+            __FILE__        - Path to the current environment JSON file
             
         Returns:
             Dictionary of special variable names and their values
@@ -284,22 +287,54 @@ class EnvironmentManager:
         Files are merged in order, with later files overriding earlier ones.
         Supports variable expansion, append/prepend operators, and path lists.
         
-        Examples in JSON:
-            List:     "PYTHONPATH": ["R:/path1", "R:/path2", "R:/path3"]
-            Append:   "+=PYTHONPATH": ["R:/new/path"]
-            Prepend:  "^=PYTHONPATH": "R:/new/path"
-            Default:  "?=USER_ROOT": "{$LOCALAPPDATA}/myapp"
-            Replace:  "PYTHONPATH": "R:/new/path"
-            Variable: "PYTHONPATH": "{$PYTHONPATH};R:/new/path"
-            Special:  "PATH": "{$__BUNDLE__}/bin"
+        Two top-level JSON formats are accepted:
+
+        **Flat format** — every key is a variable name (with optional operator):
+
+        .. code-block:: json
+
+            {
+                "PYTHONPATH": ["R:/path1", "R:/path2"],
+                "+=PYTHONPATH": "R:/extra",
+                "?=USER_ROOT": "${LOCALAPPDATA}/myapp",
+                "PATH": "${__BUNDLE__}/bin"
+            }
+
+        **Structured format** — top-level dict has an ``"environment"`` key:
+
+        .. code-block:: json
+
+            {
+                "environment": [
+                    ["+=PYTHONPATH", "${__BUNDLE__}/python"],
+                    ["?=MY_TOOL_HOME", "${__BUNDLE__}"]
+                ],
+                "environment_allowlist": ["PYTHONPATH", "MY_EXISTING_VAR"]
+            }
+
+        In structured format ``"environment"`` may be either:
+
+        * A **list of ``[key, value]`` pairs** (shown above).
+        * A **dict** — identical semantics to the flat format.
+
+        The ``"environment_allowlist"`` key (optional) lists OS environment
+        variables that should be seeded into scope *before* this file's
+        entries are processed.  This lets ``+=`` and ``^=`` operators append
+        to variables that were set outside envoy (e.g. a shell-level
+        ``PYTHONPATH``).  These variables are only added if they exist in
+        ``os.environ``; missing names are silently skipped.
         
-        Special wrapper variables:
-            {$__BUNDLE__}      - Root directory of the bundle (parent of envoy_env/)
-            {$__BUNDLE_ENV__}  - The envoy_env/ directory itself
-            {$__BUNDLE_NAME__} - Name of the bundle (directory name)
-            {$__FILE__}         - Current environment JSON file path
-        
-        Paths can use Unix-style forward slashes, automatically converted on Windows.
+        Operator prefix summary:
+            ``+=VAR`` — append (current + sep + new)
+            ``^=VAR`` — prepend (new + sep + current)
+            ``?=VAR`` — default (set only if VAR is not already defined)
+            (none)   — replace unconditionally
+
+        Special wrapper variables available in ``${...}`` expansion:
+            ``${__BUNDLE__}``      — bundle root directory (parent of ``envoy_env/``)
+            ``${__BUNDLE_ENV__}``  — the ``envoy_env/`` directory itself
+            ``${__BUNDLE_NAME__}`` — bundle directory name
+            ``${__FILE__}``        — current environment JSON file path
         
         Args:
             env_files: Single file path or list of file paths to load
@@ -327,7 +362,7 @@ class EnvironmentManager:
         # Determine path separator based on OS
         path_sep = ';' if os.name == 'nt' else ':'
         
-        # Seed from base_env so {$VAR} references and += operators see whatever
+        # Seed from base_env so ${VAR} references and += operators see whatever
         # variables are legitimately in scope (allowlist or full system env).
         # A copy is taken so the caller's dict is never modified.
         merged_env: dict[str, str] = dict(base_env) if base_env else {}
@@ -343,16 +378,66 @@ class EnvironmentManager:
             
             try:
                 with open(path, 'r', encoding='utf-8') as f:
-                    file_env = json.load(f)
+                    file_data = json.load(f)
                 
-                if not isinstance(file_env, dict):
+                if isinstance(file_data, list):
+                    # Bare list format: [[key, value], [key, value], ...]
+                    items = []
+                    for idx, entry in enumerate(file_data):
+                        if not (isinstance(entry, (list, tuple)) and len(entry) == 2):
+                            raise WrapperError(
+                                f'list entry {idx} in {path} must be a '
+                                f'[key, value] pair, got: {entry!r}'
+                            )
+                        items.append((entry[0], entry[1]))
+
+                elif not isinstance(file_data, dict):
                     raise WrapperError(
-                        f"Environment file must contain a JSON object: {path}"
+                        f"Environment file must contain a JSON object or array: {path}"
                     )
-                
-                # Process each key-value pair
-                for key, value in file_env.items():
-                    # Check for operators
+
+                elif 'environment' in file_data:
+                    # Structured dict format -----------------------------------
+                    # 1. Seed file-level allowlist vars from os.environ before
+                    #    processing so += / ^= operators can append to them.
+                    for var in file_data.get('environment_allowlist', []):
+                        if var not in merged_env and var in os.environ:
+                            merged_env[var] = os.environ[var]
+
+                    # 2. Normalise "environment" to an iterable of (key, value).
+                    env_entries = file_data['environment']
+                    if isinstance(env_entries, dict):
+                        items: list[tuple[str, Any]] = list(env_entries.items())
+                    elif isinstance(env_entries, list):
+                        items = []
+                        for idx, entry in enumerate(env_entries):
+                            if not (isinstance(entry, (list, tuple)) and len(entry) == 2):
+                                raise WrapperError(
+                                    f'environment entry {idx} in {path} must be a '
+                                    f'[key, value] pair, got: {entry!r}'
+                                )
+                            items.append((entry[0], entry[1]))
+                    else:
+                        raise WrapperError(
+                            f'"environment" in {path} must be a list or dict, '
+                            f'got {type(env_entries).__name__}'
+                        )
+
+                    unknown_keys = set(file_data) - {'environment', 'environment_allowlist'}
+                    if unknown_keys:
+                        log.warning(
+                            'Unknown keys in structured env file %s: %s',
+                            path, ', '.join(sorted(unknown_keys)),
+                        )
+
+                else:
+                    # Flat dict format -----------------------------------------
+                    items = list(file_data.items())
+
+                # ------------------------------------------------------------------
+                # Process each (key, value) pair — identical logic for both formats.
+                # ------------------------------------------------------------------
+                for key, value in items:
                     append_mode = False
                     prepend_mode = False
                     default_mode = False
@@ -360,50 +445,41 @@ class EnvironmentManager:
                     
                     if key.startswith('?='):
                         default_mode = True
-                        var_name = key[2:]  # Remove ?= prefix
+                        var_name = key[2:]
                     elif key.startswith('+='):
                         append_mode = True
-                        var_name = key[2:]  # Remove += prefix
+                        var_name = key[2:]
                     elif key.startswith('^='):
                         prepend_mode = True
-                        var_name = key[2:]  # Remove ^= prefix
+                        var_name = key[2:]
                     
                     # Process the value (handles lists, normalization, expansion)
                     processed_value = self.process_env_value(value, merged_env, special_vars)
                     
-                    # Handle append/prepend/default operations
                     if default_mode:
-                        # Default: only set if the variable is not already in scope.
-                        # This lets a system value that bubbled through the allowlist
-                        # (or was set by an earlier file) take precedence.
                         if var_name not in merged_env:
                             merged_env[var_name] = processed_value
                     elif append_mode or prepend_mode:
-                        # Only look in merged_env — never fall back to os.environ.
-                        # If the variable isn't defined yet it's treated as empty,
-                        # making += and ^= equivalent to a plain assignment on first use.
                         current_value = merged_env.get(var_name, '')
-                        
                         if append_mode:
-                            # Append: current + separator + new
                             if current_value:
                                 merged_env[var_name] = f"{current_value}{path_sep}{processed_value}"
                             else:
                                 merged_env[var_name] = processed_value
                         else:  # prepend_mode
-                            # Prepend: new + separator + current
                             if current_value:
                                 merged_env[var_name] = f"{processed_value}{path_sep}{current_value}"
                             else:
                                 merged_env[var_name] = processed_value
                     else:
-                        # Normal assignment - just set the value
                         merged_env[var_name] = processed_value
                 
-                log.info(f"Loaded {len(file_env)} environment variables from {path}")
+                log.info('Loaded environment from %s (%d entries)', path, len(items))
                 
             except json.JSONDecodeError as e:
                 raise WrapperError(f"Invalid JSON in environment file {path}: {e}") from e
+            except WrapperError:
+                raise
             except Exception as e:
                 raise WrapperError(f"Error reading environment file {path}: {e}") from e
         
@@ -444,7 +520,7 @@ class EnvironmentManager:
                     result_env[var] = os.environ[var]
         
         # Load from files (overrides inherited/seeded env).
-        # Pass result_env as base_env so {$VAR} expansion and += / ^= operators
+        # Pass result_env as base_env so ${VAR} expansion and += / ^= operators
         # inside env files see exactly the same variables that will be in scope —
         # no silent leakage of system variables that aren't in base_env.
         file_env = self.load_env_from_files(env_files, base_env=result_env)
