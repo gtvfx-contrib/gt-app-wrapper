@@ -89,9 +89,9 @@ from ._discovery import (
 from ._environment import _CORE_ENV_VARS, _ENVOY_ENV_VARS
 from ._cli import main as cli_main
 
-# Lazy submodule imports — ``import gt.envoy`` makes these available as
-# ``gt.envoy.proc``, ``gt.envoy.testing``, and ``gt.envoy.exceptions``
-# without forcing all their dependencies to execute at module load time.
+# Convenience submodule imports — ``import gt.envoy`` makes these available as
+# ``gt.envoy.proc``, ``gt.envoy.testing``, and ``gt.envoy.exceptions``.
+# This module eagerly imports these submodules at import time.
 from . import proc       # noqa: E402
 from . import testing    # noqa: E402
 from . import exceptions # noqa: E402
