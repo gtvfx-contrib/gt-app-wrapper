@@ -311,6 +311,10 @@ def find_commands_file(start_path: Path | None = None) -> Path | None:
         p = Path(env_override).resolve()
         if p.is_file():
             return p
+        if p.exists():
+            raise WrapperError(
+                f"ENVOY_COMMANDS_FILE does not point to a file: {env_override!r}"
+            )
 
     # 2. Walk up from start_path.
     if start_path is None:
