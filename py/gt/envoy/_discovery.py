@@ -35,7 +35,7 @@ BUNDLE_CHECKOUT: str = 'checkout'
 #: ``'bfd:maya'`` where ``'bfd'`` is the team and ``'maya'`` is the name).
 BUNDLE_DEFAULT_NAMESPACE: str = 'gt'
 
-_NAMESPACE_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_]{0,19}$')
+_NAMESPACE_RE = re.compile(r'^[A-Za-z][A-Za-z0-9_]{1,19}$')
 
 
 _BNDLID_RE = re.compile(r'^([A-Za-z][A-Za-z0-9_]{1,19}):([A-Za-z][A-Za-z0-9_-]*)$')
