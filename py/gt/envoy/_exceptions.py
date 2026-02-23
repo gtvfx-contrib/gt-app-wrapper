@@ -22,6 +22,8 @@ the following identity holds::
 from __future__ import annotations
 
 import subprocess
+from typing import Union
+from os import PathLike
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +79,7 @@ class CalledProcessError(EnvoyError, subprocess.CalledProcessError):
         gt.envoy.exceptions.CalledProcessError is gt.envoy.proc.CalledProcessError
     """
 
-    def __init__(self, returncode: int, cmd: object, output=None, stderr=None):
+    def __init__(self, returncode: int, cmd: Union[str, bytes, PathLike], output=None, stderr=None):
         # subprocess.CalledProcessError.__init__ requires positional args.
         subprocess.CalledProcessError.__init__(self, returncode, cmd, output, stderr)
 

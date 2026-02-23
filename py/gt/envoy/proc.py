@@ -241,8 +241,14 @@ def _popen(
 
     full_cmd = [resolved] + cmd_def.base_args + list(extra_args)
 
-    if os.name == 'nt' and 'creationflags' not in kwargs:
-        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+    if os.name == 'nt':
+        if 'creationflags' not in kwargs:
+            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+        # Batch files cannot be executed directly by CreateProcess; they must
+        # be run via cmd.exe.  This also prevents %~dp0 expansion failures on
+        # UNC paths that use forward slashes.
+        if Path(resolved).suffix.lower() in ('.bat', '.cmd'):
+            full_cmd = ['cmd', '/c'] + full_cmd
 
     return subprocess.Popen(full_cmd, env=env, **kwargs)
 
@@ -416,7 +422,7 @@ class Environment:
         rc = self.call(args, **kwargs)
         if rc != 0:
             exe = self._cmd_def.executable if self._cmd_def else self._command
-            raise CalledProcessError(rc, [exe] + list(args or []))
+            raise CalledProcessError(rc, exe)
         return rc
 
     def check_output(
@@ -461,7 +467,7 @@ class Environment:
             exe = self._cmd_def.executable if self._cmd_def else self._command
             raise CalledProcessError(
                 proc.returncode,
-                [exe] + list(args or []),
+                exe,
                 output=stdout,
             )
         return stdout
@@ -595,7 +601,7 @@ def check_call(
         **kwargs,
     )
     if rc != 0:
-        raise CalledProcessError(rc, cmd)
+        raise CalledProcessError(rc, cmd[0])
     return rc
 
 

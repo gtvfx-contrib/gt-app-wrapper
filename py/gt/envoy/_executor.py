@@ -96,7 +96,13 @@ class ProcessExecutor:
             
         """
         exe = self.resolve_executable(executable, search_path=search_path)
-        return [exe] + list(args)
+        cmd = [exe] + list(args)
+        # On Windows, batch files cannot be executed directly by CreateProcess;
+        # they must be launched via cmd.exe.  This also avoids %~dp0 expansion
+        # failures on UNC paths that use forward slashes.
+        if os.name == 'nt' and Path(exe).suffix.lower() in ('.bat', '.cmd'):
+            cmd = ['cmd', '/c'] + cmd
+        return cmd
     
     def stream_process_output(self, process: subprocess.Popen) -> tuple[str, str]:
         """Stream output from process in real-time.
