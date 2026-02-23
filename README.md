@@ -112,18 +112,18 @@ Environment files define variable assignments using JSON. Keys may carry an oper
 ```json
 {
     "PYTHONPATH": [
-        "{$__BUNDLE__}/py",
-        "{$__BUNDLE__}/vendor"
+        "${__BUNDLE__}/py",
+        "${__BUNDLE__}/vendor"
     ]
 }
 ```
 
-**Variable expansion** — Use `{$VARNAME}` to reference variables already in scope. References resolve against the environment being built, not the raw system environment:
+**Variable expansion** — Use `${VARNAME}` to reference variables already in scope. References resolve against the environment being built, not the raw system environment:
 
 ```json
 {
-    "+=PYTHONPATH": "{$__BUNDLE__}/src",
-    "MY_APP_ROOT": "{$__BUNDLE__}",
+    "+=PYTHONPATH": "${__BUNDLE__}/src",
+    "MY_APP_ROOT": "${__BUNDLE__}",
     "DEBUG": "1"
 }
 ```
@@ -132,10 +132,10 @@ Environment files define variable assignments using JSON. Keys may carry an oper
 
 | Variable | Value |
 |---|---|
-| `{$__BUNDLE__}` | Bundle root directory (parent of `envoy_env/`) |
-| `{$__BUNDLE_ENV__}` | The `envoy_env/` directory |
-| `{$__BUNDLE_NAME__}` | Bundle directory name |
-| `{$__FILE__}` | Full path of the current JSON file being loaded |
+| `${__BUNDLE__}` | Bundle root directory (parent of `envoy_env/`) |
+| `${__BUNDLE_ENV__}` | The `envoy_env/` directory |
+| `${__BUNDLE_NAME__}` | Bundle directory name |
+| `${__FILE__}` | Full path of the current JSON file being loaded |
 
 See [ENV_FILES_README.md](py/gt/envoy/examples/envoy_env/ENV_FILES_README.md) for detailed documentation.
 
@@ -223,6 +223,66 @@ $env:ENVOY_ALLOWLIST = "MY_STUDIO_VAR;ANOTHER_VAR"
 
 Supports both `;` and `,` as separators. These are merged on top of the built-in core OS variables.
 
+## Python API
+
+Envoy exposes a Python API that mirrors the `bl` library's package model, with bundle-native terminology.
+
+```python
+import gt.envoy as envoy
+import gt.envoy.proc as proc
+
+# ── version / verbosity ───────────────────────────────────────────────────────
+print(envoy.__version__)           # '0.1.0'
+envoy.set_api_verbosity('DEBUG')
+
+# ── Bundle  (analogous to bl.Package) ────────────────────────────────────────
+# Construct by bndlid — resolved from ENVOY_BNDL_ROOTS automatically:
+bundle = envoy.Bundle('gt:pythoncore')
+
+# Or by filesystem path:
+bundle = envoy.Bundle(r'R:/repo/gtvfx-contrib/gt/pythoncore')
+
+print(bundle.bndlid)       # 'gt:pythoncore'  ← '<namespace>:<name>'
+print(bundle.namespace)    # 'gt'             ← inferred from parent directory
+print(bundle.name)         # 'pythoncore'
+print(bundle.version)      # 'checkout'
+print(bundle.is_checkout)  # True
+print(bundle.commands)     # ['python_dev', ...]
+print(bundle.env_files)    # {'python_env.json': Path(...), ...}
+
+# ── BundleConfig  (analogous to bl.Pipeline) ─────────────────────────────────
+cfg = envoy.BundleConfig(r'R:/studio/bundles.json')
+for b in cfg.bundles:              # list[Bundle]
+    print(b.bndlid, b.version)
+print(cfg.commands)                # merged command list across all bundles
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+print(envoy.BUNDLE_CHECKOUT)           # 'checkout'
+print(envoy.BUNDLE_DEFAULT_NAMESPACE)  # 'gt'
+
+# ── Process execution ─────────────────────────────────────────────────────────
+env = proc.Environment('python_dev')
+proc.call(['python', 'script.py'], environment=env)
+output = proc.check_output(['python', '-c', 'print(42)'], environment=env)
+
+# ── Exception handling ────────────────────────────────────────────────────────
+try:
+    proc.call(['nuke', 'comp.nk'], environment=env)
+except envoy.CalledProcessError as e:
+    print(e.returncode, e.cmd)
+except envoy.CommandNotFoundError:
+    print("command not found")
+```
+
+### bndlid
+
+A **bundle ID** (`bndlid`) uniquely identifies a bundle as `'<namespace>:<name>'`, analogous to `bl.Package.pkgid`. The namespace is inferred from the parent directory name following the convention `<bundle_roots>/<namespace>/<bundle_name>`, and defaults to `'gt'` when the parent name is not a valid identifier. It can be overridden explicitly:
+
+```python
+bundle = envoy.Bundle(r'R:/repo/gtvfx-contrib/gt/pythoncore', namespace='vfx')
+print(bundle.bndlid)  # 'vfx:pythoncore'
+```
+
 ## Real-World Examples
 
 ### Example 1: Python Development Environment
@@ -240,7 +300,7 @@ Supports both `;` and `,` as separators. These are merged on top of the built-in
 **`envoy_env/python_env.json`:**
 ```json
 {
-    "+=PYTHONPATH": "{$__BUNDLE__}/src",
+    "+=PYTHONPATH": "${__BUNDLE__}/src",
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONUTF8": "1"
 }
@@ -265,8 +325,8 @@ envoy python_dev script.py
 **`envoy_env/unreal_env.json`:**
 ```json
 {
-    "+=PYTHONPATH": "{$__BUNDLE__}/py",
-    "+=PATH": "{$__BUNDLE__}/bin",
+    "+=PYTHONPATH": "${__BUNDLE__}/py",
+    "+=PATH": "${__BUNDLE__}/bin",
     "UE_BIN": "D:/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor.exe"
 }
 ```
@@ -285,10 +345,10 @@ With `ENVOY_BNDL_ROOTS=R:/repo` and two bundles:
 
 ```bash
 envoy --list
-#   build                [build-tools]
-#   test                 [build-tools]
-#   deploy               [deploy-tools]
-#   package              [deploy-tools]
+#   build                [gt:build-tools]
+#   test                 [gt:build-tools]
+#   deploy               [gt:deploy-tools]
+#   package              [gt:deploy-tools]
 
 envoy build --target Release
 envoy deploy --env production
@@ -296,7 +356,7 @@ envoy deploy --env production
 
 ### Example 4: Shared Baseline via `global_env.json`
 
-Any bundle can place a `global_env.json` in its `envoy_env/` directory. It is loaded automatically before command-specific env files for every command sourced from that bundle:
+Any bundle can place a `global_env.json` in its `envoy_env/` directory. In multi-bundle mode, `global_env.json` is collected from **every** bundle in discovery order before command-specific env files are loaded — regardless of which bundle owns the command. Bundle order (from the config file or `ENVOY_BNDL_ROOTS` scan) is the primary control for how these baseline layers compose via the `+=`/`^=` operators.
 
 **`envoy_env/global_env.json`:**
 ```json
@@ -346,7 +406,7 @@ When multiple bundles define the same command name, the last discovered bundle w
 
 ```bash
 envoy --verbose --list
-# WARNING: Command 'build' from bundle-b overrides existing command from bundle-a
+# WARNING: Command 'build' from gt:bundle-b overrides existing command from gt:bundle-a
 ```
 
 ### Environment File Chaining
@@ -356,14 +416,14 @@ Environment files are loaded in order; later files can reference variables set b
 **`base_env.json`:**
 ```json
 {
-    "APP_ROOT": "{$__BUNDLE__}"
+    "APP_ROOT": "${__BUNDLE__}"
 }
 ```
 
 **`dev_env.json`:**
 ```json
 {
-    "APP_CONFIG": "{$APP_ROOT}/config/dev.json",
+    "APP_CONFIG": "${APP_ROOT}/config/dev.json",
     "LOG_LEVEL": "DEBUG"
 }
 ```
@@ -425,7 +485,7 @@ Envoy is part of the GT Tools collection. See `LICENSE` for details.
 **Environment variables not applying**
 - Check JSON syntax in environment files
 - Use `--verbose` to see environment loading detail
-- In closed mode, only core OS vars, the allowlist, and bundle env file vars are present — `{$VARNAME}` references to unlisted system vars expand to empty string
+- In closed mode, only core OS vars, the allowlist, and bundle env file vars are present — `${VARNAME}` references to unlisted system vars expand to empty string
 - Use `ENVOY_ALLOWLIST` to explicitly carry through additional system variables
 
 **Run with `--verbose` for detailed logging** of bundle discovery, command loading, environment processing, and executable resolution.
