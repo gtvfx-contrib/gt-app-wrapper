@@ -274,7 +274,7 @@ class Bundle:
             m = _BNDLID_RE.match(spec)
             inferred_ns = m.group(1)  # type: ignore[union-attr]
             root = _resolve_bndlid(spec)
-            ns = namespace if namespace is not None else inferred_ns
+            ns = inferred_ns
         else:
             root = Path(spec).resolve()
             if not root.is_dir():
