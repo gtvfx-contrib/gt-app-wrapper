@@ -246,7 +246,6 @@ __all__ = [
     'ValidationError',
 
     # ---- Top-level API functions ----
-    '__version__',
     'get_environment',
     'get_allowlist',
     'set_api_verbosity',
