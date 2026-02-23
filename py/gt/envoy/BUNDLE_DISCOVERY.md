@@ -284,3 +284,73 @@ for cmd_name in registry.list_commands():
 
 **Command resolves to wrong bundle**
 Multiple bundles define the same command name — last loaded wins. Use `--verbose` to see the override warning, then adjust bundle order in your config file or `ENVOY_BNDL_ROOTS`.
+
+## Versioning Roadmap
+
+The current implementation treats all bundles as **checkout** bundles — paths pointing directly to live git repositories on disk. This mirrors `bl.Package(version='checkout')`.
+
+The planned versioning model brings parity with `bl`'s package+pipeline system:
+
+### Bundle Versioning (`bl.Package` parity)
+
+| Stage | bl equivalent | envoy description |
+|---|---|---|
+| **Now** | `bl.Package(version='checkout')` | `Bundle(path='/repo/pythoncore')` — live git repo |
+| **Future** | `bl.Package(version='latest')` | `Bundle('pythoncore', version='latest')` — latest built release |
+| **Future** | `bl.Package(version='1.2.3')` | `Bundle('pythoncore', version='1.2.3')` — pinned semver |
+
+A **production bundle** is created by:
+
+1. Tagging a git commit (`git tag v1.2.3`) in the bundle repo.
+2. Running an envoy build step that exports the `envoy_env/` contents to a versioned output directory — analogous to `bl publish`.
+3. Registering the built directory in a central bundle registry (the equivalent of `bl`'s `prodPackagesRoot`).
+
+The `Bundle.version` property returns `'checkout'` for all current path-based bundles and will return a semver string for production bundles. `Bundle.is_production` will become `True` for built releases.
+
+### BundleConfig Versioning (`bl.Pipeline` parity)
+
+A `BundleConfig` (the pipeline equivalent) will evolve from a flat list of paths to a file that pins specific bundle versions:
+
+**Current format — all paths, all checkout:**
+
+```json
+["R:/repo/gtvfx-contrib/gt/pythoncore",
+ "R:/repo/gtvfx-contrib/gt/globals"]
+```
+
+**Future format — versioned bundle specs:**
+
+```json
+{
+    "bundles": {
+        "pythoncore": "1.2.3",
+        "globals": "latest",
+        "my_local_tool": "checkout:R:/repo/my_local_tool"
+    }
+}
+```
+
+The `checkout:` prefix preserves the current path-based behaviour for in-development bundles living in git repos alongside production-pinned counterparts — the same developer-vs-production duality that `bl` provides via `version='checkout'` vs an explicit semver.
+
+### Python API Preview
+
+```python
+import gt.envoy as envoy
+
+# Current (checkout)
+bundle = envoy.Bundle('/repo/pythoncore')
+assert bundle.version == envoy.BUNDLE_CHECKOUT   # 'checkout'
+assert bundle.is_checkout is True
+assert bundle.is_production is False
+
+# Future (production — not yet implemented)
+bundle = envoy.Bundle('pythoncore', version='1.2.3')
+assert bundle.version == '1.2.3'
+assert bundle.is_production is True
+
+# BundleConfig — future versioned format resolves to production bundles
+cfg = envoy.BundleConfig('/studio/envoy_bundles.json')
+for b in cfg.bundles:
+    print(b.name, b.version, b.is_production)
+```
+

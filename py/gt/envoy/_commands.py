@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 
 from ._exceptions import WrapperError
@@ -17,7 +18,9 @@ class CommandDefinition:
         name: Command name (the JSON key)
         environment: List of environment JSON files to load
         alias: Optional list of command parts to execute instead of command name
-        bundle: Optional bundle name this command comes from
+        bundle: Optional bundle bndlid this command comes from (``'<ns>:<name>'``,
+            e.g. ``'gt:pythoncore'``).  ``None`` for commands loaded from a
+            bare ``commands.json`` without bundle context.
         envoy_env_dir: Directory containing environment files
         
     """
@@ -43,7 +46,7 @@ class CommandDefinition:
         self.name = name
         self.environment = environment
         self.alias = alias
-        self.bundle = bundle
+        self.bundle = bundle  # bndlid string, e.g. 'gt:pythoncore'
         self.envoy_env_dir = envoy_env_dir
     
     @property
@@ -73,8 +76,8 @@ class CommandDefinition:
     def __repr__(self) -> str:
         """String representation."""
         alias_str = f" (alias: {' '.join(self.alias)})" if self.alias else ""
-        bundle_str = f" from {self.bundle}" if self.bundle else ""
-        return f"CommandDefinition({self.name}{alias_str}, env={self.environment}{bundle_str})"
+        bundle_str = f" [{self.bundle}]" if self.bundle else ""
+        return f"CommandDefinition({self.name}{bundle_str}{alias_str}, env={self.environment})"
 
 
 class CommandRegistry:
@@ -88,7 +91,7 @@ class CommandRegistry:
             
         """
         self._commands: dict[str, CommandDefinition] = {}
-        self._bundle_sources: dict[str, str] = {}  # cmd_name -> bundle_name
+        self._bundle_sources: dict[str, str] = {}  # cmd_name -> bundle bndlid
         if commands_file:
             self.load_from_file(commands_file)
     
@@ -97,7 +100,11 @@ class CommandRegistry:
         
         Args:
             commands_file: Path to commands.json
-            bundle_name: Optional bundle name for tracking command source
+            bundle_name: Optional bundle bndlid (e.g. ``'gt:pythoncore'``) used
+                to track command origin and populate
+                :attr:`CommandDefinition.bundle`.  Pass ``None`` for commands
+                loaded directly from a bare ``commands.json`` without a
+                discovered bundle.
             
         Raises:
             WrapperError: If file cannot be read or parsed
@@ -164,20 +171,84 @@ class CommandRegistry:
         except Exception as e:
             raise WrapperError(f"Error reading commands file {commands_file}: {e}") from e
     
+    def resolve_environment(
+        self,
+        command_name: str,
+        _seen: frozenset[str] | None = None,
+    ) -> list[tuple[str, 'Path | None']]:
+        """Resolve the full environment file list for a command.
+
+        Entries in a command's ``environment`` list that contain no dot are
+        treated as references to another command; their resolved environment
+        lists are spliced in at that position, recursively.  Entries that
+        contain a dot (e.g. ``"python_env.json"``) are treated as plain file
+        names.
+
+        This allows commands to inherit another command's environment::
+
+            "unreal57": {
+                "environment": ["unreal", "unreal57_env.json"],
+                "alias": ["unreal57.bat"]
+            }
+
+        Args:
+            command_name: Name of the command to resolve.
+            _seen: Internal frozenset of visited command names used for cycle
+                detection — callers should not pass this.
+
+        Returns:
+            Flat list of ``(filename, envoy_env_dir)`` pairs in load order.
+            ``envoy_env_dir`` is the directory that owns the file and should be
+            used to construct the full path in legacy (non-bundle) mode.
+
+        Raises:
+            WrapperError: If a referenced command is not found or a cycle is
+                detected.
+
+        """
+        if _seen is None:
+            _seen = frozenset()
+
+        if command_name in _seen:
+            raise WrapperError(
+                f"Circular environment reference detected at command '{command_name}'"
+            )
+
+        cmd = self.get(command_name)
+        if cmd is None:
+            raise WrapperError(
+                f"Environment reference '{command_name}' does not match any known command"
+            )
+
+        _seen = _seen | {command_name}
+        result: list[tuple[str, Path | None]] = []
+
+        for entry in cmd.environment:
+            # An entry with no dot is treated as a command name reference;
+            # anything with a dot (e.g. "python_env.json") is a plain file.
+            if '.' not in Path(entry).name:
+                result.extend(self.resolve_environment(entry, _seen=_seen))
+            else:
+                result.append((entry, cmd.envoy_env_dir))
+
+        return result
+
     def load_from_bundles(self, bundles: list) -> None:
         """Load commands from multiple bundles.
         
         Args:
-            bundles: List of BundleInfo objects from discovery
+            bundles: List of BundleInfo (or Bundle) objects from discovery.
+                Each entry must expose ``.bndlid``, ``.envoy_env``, and
+                ``.name`` attributes.
             
         """
         for bundle in bundles:
             commands_file = bundle.envoy_env / "commands.json"
             if commands_file.exists():
                 try:
-                    self.load_from_file(commands_file, bundle_name=bundle.name)
+                    self.load_from_file(commands_file, bundle_name=bundle.bndlid)
                 except WrapperError as e:
-                    log.warning(f"Failed to load commands from bundle {bundle.name}: {e}")
+                    log.warning(f"Failed to load commands from bundle {bundle.bndlid}: {e}")
     
     def get(self, command_name: str) -> CommandDefinition | None:
         """Get a command definition by name.
@@ -219,25 +290,43 @@ class CommandRegistry:
 
 def find_commands_file(start_path: Path | None = None) -> Path | None:
     """Find commands.json by searching up the directory tree for envoy_env/.
-    
+
+    Resolution order:
+
+    1. ``ENVOY_COMMANDS_FILE`` environment variable — if set, that path is
+       returned directly (used by :func:`~gt.envoy.testing.patch_commands_file`
+       in tests).
+    2. Upward directory walk from *start_path* (or cwd) looking for
+       ``envoy_env/commands.json``.
+
     Args:
-        start_path: Starting directory (defaults to cwd)
-        
+        start_path: Starting directory (defaults to cwd).
+
     Returns:
-        Path to commands.json if found, None otherwise
-        
+        Path to commands.json if found, None otherwise.
     """
+    # 1. Honour the override env var set by envoy_testing.patch_commands_file.
+    env_override = os.environ.get('ENVOY_COMMANDS_FILE')
+    if env_override:
+        p = Path(env_override).resolve()
+        if p.is_file():
+            return p
+        if p.exists():
+            raise WrapperError(
+                f"ENVOY_COMMANDS_FILE does not point to a file: {env_override!r}"
+            )
+
+    # 2. Walk up from start_path.
     if start_path is None:
         start_path = Path.cwd()
-    
+
     current = start_path.resolve()
-    
-    # Search up the tree for envoy_env directory
+
     for parent in [current] + list(current.parents):
         wrapper_env_dir = parent / "envoy_env"
         if wrapper_env_dir.is_dir():
             commands_file = wrapper_env_dir / "commands.json"
             if commands_file.exists():
                 return commands_file
-    
+
     return None

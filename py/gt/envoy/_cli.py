@@ -93,9 +93,15 @@ def show_command_info(registry: CommandRegistry, command_name: str) -> int:
     if cmd.base_args:
         print(f"Base args: {' '.join(cmd.base_args)}")
     
+    try:
+        resolved_env = registry.resolve_environment(command_name)
+    except WrapperError as e:
+        print(f"Error resolving environment for '{command_name}': {e}", file=sys.stderr)
+        return 1
+
     print(f"Environment files:")
-    for env_file in cmd.environment:
-        print(f"  - {env_file}")
+    for env_file_name, _env_dir in resolved_env:
+        print(f"  - {env_file_name}")
     
     if cmd.envoy_env_dir:
         print(f"Environment directory: {cmd.envoy_env_dir}")
@@ -144,11 +150,17 @@ def show_which(
     
     # Build env files the same way run_command does so PATH is correct.
     env_files = []
+    try:
+        resolved_env = registry.resolve_environment(command_name)
+    except WrapperError as e:
+        print(f"Error resolving environment for '{command_name}': {e}", file=sys.stderr)
+        return 1
+
     if bundles:
         for bundle in bundles:
             if 'global_env.json' in bundle.env_files:
                 env_files.append(str(bundle.env_files['global_env.json']))
-        for env_file_name in cmd.environment:
+        for env_file_name, _env_dir in resolved_env:
             for bundle in bundles:
                 if env_file_name in bundle.env_files:
                     env_files.append(str(bundle.env_files[env_file_name]))
@@ -156,7 +168,9 @@ def show_which(
         global_env = cmd.envoy_env_dir / 'global_env.json'
         if global_env.exists():
             env_files.append(str(global_env))
-        env_files.extend(str(cmd.envoy_env_dir / f) for f in cmd.environment)
+        for env_file_name, env_dir in resolved_env:
+            dir_to_use = env_dir or cmd.envoy_env_dir
+            env_files.append(str(dir_to_use / env_file_name))
     
     env_mgr = EnvironmentManager(inherit_env=inherit_env, allowlist=env_allowlist)
     try:
@@ -215,8 +229,14 @@ def run_command(
             if 'global_env.json' in bundle.env_files:
                 env_files.append(str(bundle.env_files['global_env.json']))
                 log.debug(f"Found global environment file: {bundle.env_files['global_env.json']}")
-        
-        for env_file_name in cmd.environment:
+
+        try:
+            resolved_env = registry.resolve_environment(command_name)
+        except WrapperError as e:
+            print(f"Error resolving environment for '{command_name}': {e}", file=sys.stderr)
+            return 1
+
+        for env_file_name, _env_dir in resolved_env:
             for bundle in bundles:
                 if env_file_name in bundle.env_files:
                     env_files.append(str(bundle.env_files[env_file_name]))
@@ -240,15 +260,25 @@ def run_command(
             env_files.append(str(global_env))
             log.debug(f"Found global environment file: {global_env}")
         
-        # Build full environment file paths
-        cmd_env_files = [str(wrapper_env_dir / env_file) for env_file in cmd.environment]
-        
+        # Resolve env file names (expanding any command-name references) and
+        # build full paths using each entry's owning directory.
+        try:
+            resolved_env = registry.resolve_environment(command_name)
+        except WrapperError as e:
+            print(f"Error resolving environment for '{command_name}': {e}", file=sys.stderr)
+            return 1
+
+        cmd_env_files = [
+            str((env_dir or wrapper_env_dir) / env_file_name)
+            for env_file_name, env_dir in resolved_env
+        ]
+
         # Verify all environment files exist (only in legacy mode)
         for env_file in cmd_env_files:
             if not Path(env_file).exists():
                 print(f"Error: Environment file not found: {env_file}", file=sys.stderr)
                 return 1
-        
+
         env_files.extend(cmd_env_files)
     
     # Combine base args with user args

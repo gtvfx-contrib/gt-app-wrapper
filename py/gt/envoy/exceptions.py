@@ -1,0 +1,46 @@
+"""gt.envoy.exceptions -- Public exception module.
+
+All gt.envoy exceptions are accessible here.  The most commonly needed class,
+:class:`CalledProcessError`, is also available on :mod:`gt.envoy.proc` and is
+the **same object** in both places::
+
+    import gt.envoy.exceptions as exceptions
+    import gt.envoy.proc as proc
+
+    assert exceptions.CalledProcessError is proc.CalledProcessError  # True
+
+Usage::
+
+    from gt.envoy.exceptions import EnvoyError, CalledProcessError
+
+    try:
+        proc.check_call(['maya', 'bad_scene.ma'])
+    except CalledProcessError as e:
+        print(f'Process exited {e.returncode}')
+    except EnvoyError as e:
+        print(f'Envoy error: {e}')
+"""
+
+from ._exceptions import (
+    EnvoyError,
+    WrapperError,
+    PreRunError,
+    PostRunError,
+    ExecutionError,
+    CalledProcessError,
+    EnvironmentBuildError,
+    CommandNotFoundError,
+    ValidationError,
+)
+
+__all__ = [
+    "EnvoyError",
+    "WrapperError",
+    "PreRunError",
+    "PostRunError",
+    "ExecutionError",
+    "CalledProcessError",
+    "EnvironmentBuildError",
+    "CommandNotFoundError",
+    "ValidationError",
+]
