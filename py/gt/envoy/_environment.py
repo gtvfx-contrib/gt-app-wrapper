@@ -339,7 +339,7 @@ class EnvironmentManager:
         Args:
             env_files: Single file path or list of file paths to load
             base_env: Variables already in scope before any file is processed.
-                Used for {$VARNAME} expansion and as the starting point for +=
+                Used for ${VARNAME} expansion (with {$VARNAME} as a legacy alias) and as the starting point for +=
                 and ^= operators.  Should be os.environ.copy() in inherit-env
                 mode, or the allowlist-seeded dict in closed mode.  Never
                 modified — a copy is taken before file processing begins.
