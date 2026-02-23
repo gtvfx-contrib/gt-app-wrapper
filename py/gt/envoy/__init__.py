@@ -256,7 +256,6 @@ __all__ = [
     'cli_main',
 
     # ---- Bundle discovery ----
-    'BundleInfo',
     'get_bundles',
     'discover_bundles_auto',
     'load_bundles_from_config',
