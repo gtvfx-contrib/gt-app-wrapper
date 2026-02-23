@@ -318,11 +318,13 @@ class EnvironmentManager:
         * A **dict** — identical semantics to the flat format.
 
         The ``"environment_allowlist"`` key (optional) lists OS environment
-        variables that should be seeded into scope *before* this file's
-        entries are processed.  This lets ``+=`` and ``^=`` operators append
-        to variables that were set outside envoy (e.g. a shell-level
-        ``PYTHONPATH``).  These variables are only added if they exist in
-        ``os.environ``; missing names are silently skipped.
+        variables that should be seeded into scope before any file's entries
+        are processed.  All ``"environment_allowlist"`` declarations across
+        **all** files in the list are aggregated in a pre-pass and seeded from
+        ``os.environ`` at once, before the main processing loop begins.  This
+        means a var declared in a later file's allowlist is already visible to
+        ``+=`` / ``^=`` operators in earlier files.  Variables not present in
+        ``os.environ`` are silently skipped.
         
         Operator prefix summary:
             ``+=VAR`` — append (current + sep + new)
@@ -366,20 +368,38 @@ class EnvironmentManager:
         # variables are legitimately in scope (allowlist or full system env).
         # A copy is taken so the caller's dict is never modified.
         merged_env: dict[str, str] = dict(base_env) if base_env else {}
-        
+
+        # --- Pre-pass: parse all files and aggregate environment_allowlist ---
+        # Collect allowlist entries from every file before any variable
+        # expansion runs, then seed them all from os.environ at once.
+        # This means a var declared in a later file's allowlist is already
+        # visible to += / ^= operators in earlier files.
+        parsed_files: list[tuple[Path, Any]] = []
         for file_path in env_files:
             path = Path(file_path)
-            
             if not path.exists():
                 raise WrapperError(f"Environment file not found: {path}")
-            
-            # Calculate special variables for this file
-            special_vars = self.get_special_variables(path)
-            
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     file_data = json.load(f)
-                
+            except json.JSONDecodeError as e:
+                raise WrapperError(f"Invalid JSON in environment file {path}: {e}") from e
+            parsed_files.append((path, file_data))
+
+        # Aggregate and seed allowlist vars before the main processing loop.
+        # Only seed vars that are not already in merged_env (base_env wins).
+        for _path, _data in parsed_files:
+            if isinstance(_data, dict):
+                for var in _data.get('environment_allowlist', []):
+                    if var not in merged_env and var in os.environ:
+                        merged_env[var] = os.environ[var]
+
+        # --- Main pass: process each file's entries in order -----------------
+        for path, file_data in parsed_files:
+            # Calculate special variables for this file
+            special_vars = self.get_special_variables(path)
+
+            try:
                 if isinstance(file_data, list):
                     # Bare list format: [[key, value], [key, value], ...]
                     items = []
@@ -398,13 +418,9 @@ class EnvironmentManager:
 
                 elif 'environment' in file_data:
                     # Structured dict format -----------------------------------
-                    # 1. Seed file-level allowlist vars from os.environ before
-                    #    processing so += / ^= operators can append to them.
-                    for var in file_data.get('environment_allowlist', []):
-                        if var not in merged_env and var in os.environ:
-                            merged_env[var] = os.environ[var]
+                    # (allowlist already seeded in the pre-pass above)
 
-                    # 2. Normalise "environment" to an iterable of (key, value).
+                    # Normalise "environment" to an iterable of (key, value).
                     env_entries = file_data['environment']
                     if isinstance(env_entries, dict):
                         items: list[tuple[str, Any]] = list(env_entries.items())
@@ -475,9 +491,7 @@ class EnvironmentManager:
                         merged_env[var_name] = processed_value
                 
                 log.info('Loaded environment from %s (%d entries)', path, len(items))
-                
-            except json.JSONDecodeError as e:
-                raise WrapperError(f"Invalid JSON in environment file {path}: {e}") from e
+
             except WrapperError:
                 raise
             except Exception as e:
