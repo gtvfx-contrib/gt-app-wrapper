@@ -1,8 +1,8 @@
 {
-  "PACKAGE_BIN": "${__BUNDLE__}/bin",
-  "PACKAGE_LIB": "${__BUNDLE__}/lib",
-  "PACKAGE_ENV_DIR": "${__BUNDLE_ENV__}",
-  "PACKAGE_NAME_VAR": "${__BUNDLE_NAME__}",
+  "BUNDLE_BIN": "${__BUNDLE__}/bin",
+  "BUNDLE_LIB": "${__BUNDLE__}/lib",
+  "BUNDLE_ENV_DIR": "${__BUNDLE_ENV__}",
+  "BUNDLE_NAME_VAR": "${__BUNDLE_NAME__}",
   "FILE_PATH": "${__FILE__}",
   "COMBINED": "${__BUNDLE__}/tools/${__BUNDLE_NAME__}",
   "+=TEST_PATH": [
