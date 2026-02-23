@@ -93,9 +93,15 @@ def show_command_info(registry: CommandRegistry, command_name: str) -> int:
     if cmd.base_args:
         print(f"Base args: {' '.join(cmd.base_args)}")
     
+    try:
+        resolved_env = registry.resolve_environment(command_name)
+    except WrapperError as e:
+        print(f"Error resolving environment for '{command_name}': {e}", file=sys.stderr)
+        return 1
+
     print(f"Environment files:")
-    for env_file in cmd.environment:
-        print(f"  - {env_file}")
+    for env_file_name, _env_dir in resolved_env:
+        print(f"  - {env_file_name}")
     
     if cmd.envoy_env_dir:
         print(f"Environment directory: {cmd.envoy_env_dir}")
