@@ -2,6 +2,42 @@
 
 **Environment orchestration for applications** — A CLI-first tool for managing complex application environments with JSON-based configuration and multi-bundle support.
 
+## Table of Contents
+
+- [Overview](#overview)
+  - [Key Features](#key-features)
+- [Quick Start](#quick-start)
+  - [Installation](#installation)
+  - [Basic Usage](#basic-usage)
+- [Core Concepts](#core-concepts)
+  - [1. Bundles](#1-bundles)
+  - [2. Commands](#2-commands)
+  - [3. Environment Files](#3-environment-files)
+- [Bundle Discovery](#bundle-discovery)
+  - [Auto-Discovery (Recommended)](#auto-discovery-recommended)
+  - [Config File (Alternative)](#config-file-alternative)
+- [Environment Modes](#environment-modes)
+  - [Closed Mode (Default)](#closed-mode-default)
+  - [Inherit-Env Mode](#inherit-env-mode)
+  - [Allowlist](#allowlist)
+- [Python API](#python-api)
+  - [bndlid](#bndlid)
+- [Real-World Examples](#real-world-examples)
+  - [Example 1: Python Development Environment](#example-1-python-development-environment)
+  - [Example 2: Unreal Engine](#example-2-unreal-engine)
+  - [Example 3: Multi-Bundle Setup](#example-3-multi-bundle-setup)
+  - [Example 4: Shared Baseline via `global_env.json`](#example-4-shared-baseline-via-global_envjson)
+- [CLI Reference](#cli-reference)
+- [Environment Variables](#environment-variables)
+- [Advanced Topics](#advanced-topics)
+  - [Command Conflicts](#command-conflicts)
+  - [Environment File Chaining](#environment-file-chaining)
+  - [Local Fallback](#local-fallback)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
+
 ## Overview
 
 Envoy simplifies the execution of applications that require specific environment setups. Define your commands once in JSON, specify environment variables and paths, and run them anywhere with a simple CLI interface.
