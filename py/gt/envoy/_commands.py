@@ -308,8 +308,8 @@ def find_commands_file(start_path: Path | None = None) -> Path | None:
     # 1. Honour the override env var set by envoy_testing.patch_commands_file.
     env_override = os.environ.get('ENVOY_COMMANDS_FILE')
     if env_override:
-        p = Path(env_override)
-        if p.exists():
+        p = Path(env_override).resolve()
+        if p.is_file():
             return p
 
     # 2. Walk up from start_path.
