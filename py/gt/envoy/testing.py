@@ -88,6 +88,11 @@ def patch_commands_file(commands_file: str | Path):
             rc = proc.call(['my_cmd'])
     """
     cf_path = Path(commands_file).resolve()
+    if not cf_path.is_file():
+        raise FileNotFoundError(
+            f"patch_commands_file expected an existing commands.json file, but "
+            f"got {cf_path!s}"
+        )
 
     old_roots = os.environ.get('ENVOY_BNDL_ROOTS')
     old_cf = os.environ.get('ENVOY_COMMANDS_FILE')
