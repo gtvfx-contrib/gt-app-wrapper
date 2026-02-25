@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 REM Main entry point for envoy CLI
 REM Usage: do [command] [args...]
 REM        do --list
