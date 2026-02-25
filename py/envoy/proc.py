@@ -225,8 +225,18 @@ def _prepare_env(
     bundles: list[BundleInfo] | None,
     inherit_env: bool,
     allowlist: list[str] | None,
+    env_override: str | None = None,
 ) -> tuple[dict[str, str], CommandDefinition]:
     """Prepare the subprocess environment dict for a registered command.
+
+    When *env_override* is given the environment files are sourced from that
+    command instead of *command_name*, but *command_name* still determines
+    the executable and alias.  This lets you run an arbitrary executable
+    inside a different command's environment::
+
+        _prepare_env('/path/to/krita', registry, bundles,
+                     inherit_env=False, allowlist=None,
+                     env_override='krita')
 
     Returns:
         ``(env_dict, command_definition)`` — the command definition provides
@@ -236,13 +246,31 @@ def _prepare_env(
         CommandNotFoundError: Command not registered.
         EnvironmentBuildError: Environment preparation failed.
     """
-    cmd = registry.get(command_name)
-    if cmd is None:
+    # Decide which command name drives env-file collection.
+    env_source = env_override if env_override is not None else command_name
+
+    # Validate the environment-source command exists in the registry.
+    if env_override is not None and registry.get(env_override) is None:
         raise CommandNotFoundError(
-            f"Command '{command_name}' is not registered."
+            f"Environment override command '{env_override}' is not registered."
         )
 
-    env_files = _collect_env_files(command_name, registry, bundles)
+    # Build the CommandDefinition used for execution.
+    if _is_raw_path(command_name):
+        # Raw path: bypass registry lookup — wrap the path in a minimal definition.
+        cmd = CommandDefinition(
+            name=command_name,
+            environment=[],
+            alias=[command_name],
+        )
+    else:
+        cmd = registry.get(command_name)
+        if cmd is None:
+            raise CommandNotFoundError(
+                f"Command '{command_name}' is not registered."
+            )
+
+    env_files = _collect_env_files(env_source, registry, bundles)
     allowlist_set: set[str] | None = set(allowlist) if allowlist else None
     env_mgr = EnvironmentManager(inherit_env=inherit_env, allowlist=allowlist_set)
 
@@ -250,7 +278,7 @@ def _prepare_env(
         env = env_mgr.prepare_environment(env_files=env_files)
     except WrapperError as e:
         raise EnvironmentBuildError(
-            f"Failed to prepare environment for '{command_name}': {e}"
+            f"Failed to prepare environment for '{env_source}': {e}"
         ) from e
 
     return env, cmd
@@ -335,6 +363,7 @@ class Environment:
         whitelist: list[str] | None = None,
         bundle_roots: list[str] | None = None,
         commands_file: Path | None = None,
+        env_override: str | None = None,
     ) -> None:
         # ``whitelist`` is a deprecated alias for ``allowlist``; both are
         # merged so legacy callers continue to work.
@@ -344,6 +373,7 @@ class Environment:
         self._allowlist: list[str] | None = combined if combined else None
         self._bundle_roots = bundle_roots
         self._commands_file = commands_file
+        self._env_override = env_override
         self._env: dict[str, str] | None = None
         self._cmd_def: CommandDefinition | None = None
 
@@ -395,7 +425,7 @@ class Environment:
             EnvironmentBuildError: Environment files are missing or invalid.
         """
         if self._env is None:
-            if _is_raw_path(self._command):
+            if _is_raw_path(self._command) and self._env_override is None:
                 # Direct executable — no registry lookup or env-file loading.
                 allowlist_set: set[str] | None = (
                     set(self._allowlist) if self._allowlist else None
@@ -418,6 +448,7 @@ class Environment:
                 self._env, self._cmd_def = _prepare_env(
                     self._command, registry, bundles,
                     self._inherit_env, self._allowlist,
+                    env_override=self._env_override,
                 )
         return self._env
 
@@ -437,7 +468,7 @@ class Environment:
         """
         self.build()
         assert self._cmd_def is not None and self._env is not None
-        if _is_raw_path(self._command):
+        if _is_raw_path(self._command) and self._env_override is None:
             return _raw_popen(self._command, list(args or []), self._env, **kwargs)
         return _popen(self._cmd_def, list(args or []), self._env, **kwargs)
 
@@ -544,6 +575,7 @@ def call(
     allowlist: list[str] | None = None,
     bundle_roots: list[str] | None = None,
     commands_file: Path | None = None,
+    env_override: str | None = None,
     **kwargs,
 ) -> int:
     """Execute an envoy command and return its exit code.
@@ -560,6 +592,9 @@ def call(
         allowlist: Additional system variable names to include in closed mode.
         bundle_roots: Override bundle discovery roots.
         commands_file: Explicit ``commands.json`` path.
+        env_override: Name of a different envoy command whose environment files
+            should be used in place of *cmd[0]*'s own environment.  The
+            executable from *cmd[0]* (or a raw path) is still what runs.
         **kwargs: Forwarded to :class:`subprocess.Popen`.
 
     Returns:
@@ -585,6 +620,7 @@ def call(
         allowlist=allowlist,
         bundle_roots=bundle_roots,
         commands_file=commands_file,
+        env_override=env_override,
     ).call(cmd[1:], **kwargs)
 
 
@@ -595,6 +631,7 @@ def spawn(
     allowlist: list[str] | None = None,
     bundle_roots: list[str] | None = None,
     commands_file: Path | None = None,
+    env_override: str | None = None,
     **kwargs,
 ) -> subprocess.Popen:
     """Execute an envoy command and return the running process immediately.
@@ -605,6 +642,9 @@ def spawn(
         allowlist: Additional system variable names in closed mode.
         bundle_roots: Override bundle discovery roots.
         commands_file: Explicit ``commands.json`` path.
+        env_override: Name of a different envoy command whose environment files
+            should be used in place of *cmd[0]*'s own environment.  The
+            executable from *cmd[0]* (or a raw path) is still what runs.
         **kwargs: Forwarded to :class:`subprocess.Popen`.
 
     Returns:
@@ -621,6 +661,7 @@ def spawn(
         allowlist=allowlist,
         bundle_roots=bundle_roots,
         commands_file=commands_file,
+        env_override=env_override,
     ).spawn(cmd[1:], **kwargs)
 
 
@@ -631,6 +672,7 @@ def check_call(
     allowlist: list[str] | None = None,
     bundle_roots: list[str] | None = None,
     commands_file: Path | None = None,
+    env_override: str | None = None,
     **kwargs,
 ) -> int:
     """Execute an envoy command and raise on non-zero exit.
@@ -641,6 +683,8 @@ def check_call(
         allowlist: Additional system variable names in closed mode.
         bundle_roots: Override bundle discovery roots.
         commands_file: Explicit ``commands.json`` path.
+        env_override: Name of a different envoy command whose environment files
+            should be used in place of *cmd[0]*'s own environment.
         **kwargs: Forwarded to :class:`subprocess.Popen`.
 
     Returns:
@@ -658,6 +702,7 @@ def check_call(
         allowlist=allowlist,
         bundle_roots=bundle_roots,
         commands_file=commands_file,
+        env_override=env_override,
         **kwargs,
     )
     if rc != 0:
@@ -672,6 +717,7 @@ def check_output(
     allowlist: list[str] | None = None,
     bundle_roots: list[str] | None = None,
     commands_file: Path | None = None,
+    env_override: str | None = None,
     **kwargs,
 ) -> bytes:
     """Execute an envoy command and return its stdout as bytes.
@@ -687,6 +733,8 @@ def check_output(
         allowlist: Additional system variable names in closed mode.
         bundle_roots: Override bundle discovery roots.
         commands_file: Explicit ``commands.json`` path.
+        env_override: Name of a different envoy command whose environment files
+            should be used in place of *cmd[0]*'s own environment.
         **kwargs: Forwarded to :class:`subprocess.Popen`.  ``input`` and
             ``stderr`` are the most commonly useful keys here.
 
@@ -709,4 +757,5 @@ def check_output(
         allowlist=allowlist,
         bundle_roots=bundle_roots,
         commands_file=commands_file,
+        env_override=env_override,
     ).check_output(cmd[1:], **kwargs)

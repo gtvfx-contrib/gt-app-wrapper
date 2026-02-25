@@ -196,10 +196,11 @@ def run_command(
     bundles: list[BundleInfo] | None = None,
     verbose: bool = False,
     inherit_env: bool = False,
-    env_allowlist: set[str] | None = None
+    env_allowlist: set[str] | None = None,
+    env_override: str | None = None,
 ) -> int:
     """Run a command from the registry.
-    
+
     Args:
         registry: Command registry
         command_name: Name of command to run
@@ -208,21 +209,39 @@ def run_command(
         verbose: Enable verbose output
         inherit_env: If True, child process inherits the full system environment
         env_allowlist: System variable names to inherit in closed mode
-        
+        env_override: Optional name of another envoy command whose environment
+            files should be used in place of *command_name*'s own environment.
+            The target command's executable/alias is still used; only the
+            environment resolution is replaced.
+
     Returns:
         Exit code from the executed command
-        
+
     """
     cmd = registry.get(command_name)
-    
+
     if not cmd:
         print(f"Error: Command '{command_name}' not found", file=sys.stderr)
         print(f"Run 'envoy --list' to see available commands", file=sys.stderr)
         return 1
-    
+
+    # When an env override is requested, validate it exists and use its
+    # environment resolution instead of the target command's own env files.
+    env_source_name = command_name
+    if env_override is not None:
+        if registry.get(env_override) is None:
+            print(
+                f"Error: Environment override command '{env_override}' not found",
+                file=sys.stderr,
+            )
+            print(f"Run 'envoy --list' to see available commands", file=sys.stderr)
+            return 1
+        env_source_name = env_override
+        log.debug(f"Using environment from '{env_override}' for command '{command_name}'")
+
     # Collect environment files
     env_files = []
-    
+
     if bundles:
         # Multi-bundle mode: use pre-indexed env_files dict — no filesystem calls at run time
         for bundle in bundles:
@@ -231,9 +250,9 @@ def run_command(
                 log.debug(f"Found global environment file: {bundle.env_files['global_env.json']}")
 
         try:
-            resolved_env = registry.resolve_environment(command_name)
+            resolved_env = registry.resolve_environment(env_source_name)
         except WrapperError as e:
-            print(f"Error resolving environment for '{command_name}': {e}", file=sys.stderr)
+            print(f"Error resolving environment for '{env_source_name}': {e}", file=sys.stderr)
             return 1
 
         for env_file_name, _env_dir in resolved_env:
@@ -242,9 +261,13 @@ def run_command(
                     env_files.append(str(bundle.env_files[env_file_name]))
                     log.debug(f"Found environment file: {bundle.env_files[env_file_name]}")
     else:
-        # Legacy mode: use command's envoy_env_dir
-        if cmd.envoy_env_dir:
-            wrapper_env_dir = cmd.envoy_env_dir
+        # Legacy mode: use the env-source command's envoy_env_dir for env resolution
+        # but the target command's dir as fallback.
+        env_source_cmd = registry.get(env_source_name)
+        env_dir_cmd = env_source_cmd if env_source_cmd is not None else cmd
+
+        if env_dir_cmd.envoy_env_dir:
+            wrapper_env_dir = env_dir_cmd.envoy_env_dir
         else:
             # Fall back to finding commands.json
             commands_file = find_commands_file()
@@ -253,19 +276,19 @@ def run_command(
             else:
                 print(f"Error: Cannot determine envoy_env directory", file=sys.stderr)
                 return 1
-        
+
         # Collect global_env.json first if it exists
         global_env = wrapper_env_dir / 'global_env.json'
         if global_env.exists():
             env_files.append(str(global_env))
             log.debug(f"Found global environment file: {global_env}")
-        
+
         # Resolve env file names (expanding any command-name references) and
         # build full paths using each entry's owning directory.
         try:
-            resolved_env = registry.resolve_environment(command_name)
+            resolved_env = registry.resolve_environment(env_source_name)
         except WrapperError as e:
-            print(f"Error resolving environment for '{command_name}': {e}", file=sys.stderr)
+            print(f"Error resolving environment for '{env_source_name}': {e}", file=sys.stderr)
             return 1
 
         cmd_env_files = [
@@ -354,6 +377,15 @@ def main(argv: list[str] | None = None) -> int:
         help='Path to bundles config file (auto-discovers from ENVOY_BNDL_ROOTS if not specified)'
     )
     
+    parser.add_argument(
+        '--env', '-e',
+        metavar='ENV_COMMAND',
+        help=(
+            'Run the target command inside a different command\'s environment. '
+            'E.g. "envoy -e krita python" runs python using the krita environment.'
+        )
+    )
+
     parser.add_argument(
         '--verbose', '-v',
         action='store_true',
@@ -490,7 +522,8 @@ def main(argv: list[str] | None = None) -> int:
         bundles=bundles,
         verbose=args.verbose,
         inherit_env=args.inherit_env,
-        env_allowlist=env_allowlist
+        env_allowlist=env_allowlist,
+        env_override=args.env,
     )
 
 
