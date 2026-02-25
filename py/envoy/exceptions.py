@@ -1,17 +1,17 @@
-"""gt.envoy.exceptions -- Public exception module.
+﻿"""envoy.exceptions -- Public exception module.
 
-All gt.envoy exceptions are accessible here.  The most commonly needed class,
-:class:`CalledProcessError`, is also available on :mod:`gt.envoy.proc` and is
+All envoy exceptions are accessible here.  The most commonly needed class,
+:class:`CalledProcessError`, is also available on :mod:`envoy.proc` and is
 the **same object** in both places::
 
-    import gt.envoy.exceptions as exceptions
-    import gt.envoy.proc as proc
+    import envoy.exceptions as exceptions
+    import envoy.proc as proc
 
     assert exceptions.CalledProcessError is proc.CalledProcessError  # True
 
 Usage::
 
-    from gt.envoy.exceptions import EnvoyError, CalledProcessError
+    from envoy.exceptions import EnvoyError, CalledProcessError
 
     try:
         proc.check_call(['maya', 'bad_scene.ma'])

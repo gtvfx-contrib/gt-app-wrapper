@@ -1,4 +1,4 @@
-# Bundle Discovery
+﻿# Bundle Discovery
 
 ## Overview
 
@@ -222,7 +222,7 @@ envoy --list
 ## Python API
 
 ```python
-from gt.envoy import get_bundles, BundleInfo
+from envoy import get_bundles, BundleInfo
 
 # Auto-discovery (reads ENVOY_BNDL_ROOTS)
 bundles = get_bundles()
@@ -242,7 +242,7 @@ for bundle in bundles:
 ### Loading Commands from Bundles
 
 ```python
-from gt.envoy import CommandRegistry, get_bundles
+from envoy import CommandRegistry, get_bundles
 
 registry = CommandRegistry()
 bundles = get_bundles()
@@ -335,7 +335,7 @@ The `checkout:` prefix preserves the current path-based behaviour for in-develop
 ### Python API Preview
 
 ```python
-import gt.envoy as envoy
+import envoy as envoy
 
 # Current (checkout)
 bundle = envoy.Bundle('/repo/pythoncore')

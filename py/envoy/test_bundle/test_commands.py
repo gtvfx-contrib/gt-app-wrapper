@@ -1,4 +1,4 @@
-"""Tests for CommandRegistry.resolve_environment()."""
+﻿"""Tests for CommandRegistry.resolve_environment()."""
 
 import sys
 from pathlib import Path
@@ -6,8 +6,8 @@ from pathlib import Path
 # Add the module to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-from gt.envoy._commands import CommandDefinition, CommandRegistry
-from gt.envoy._exceptions import WrapperError
+from envoy._commands import CommandDefinition, CommandRegistry
+from envoy._exceptions import WrapperError
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Bundle discovery for wrapper environments.
+﻿"""Bundle discovery for wrapper environments.
 
 Supports two methods of discovering bundles:
 1. Auto-discovery: Search directories specified in ENVOY_BNDL_ROOTS for git repositories
@@ -162,7 +162,7 @@ class BundleInfo:
         """Namespaced package identifier: ``'<namespace>:<name>'``.
 
         Mirrors :attr:`Bundle.bndlid` so that internal code working with
-        :class:`BundleInfo` objects (e.g. :class:`~gt.envoy._commands.CommandRegistry`)
+        :class:`BundleInfo` objects (e.g. :class:`~envoy._commands.CommandRegistry`)
         can use the same identifier without round-tripping through a full
         :class:`Bundle` object.
         """
@@ -613,14 +613,39 @@ def discover_bundles_from_roots(root_dirs: list[str]) -> list[BundleInfo]:
 
 def discover_bundles_auto() -> list[BundleInfo]:
     """Auto-discover bundles using ENVOY_BNDL_ROOTS environment variable.
-    
+
+    When ``ENVOY_BUNDLES_CONFIG`` is set (and the file exists), that pre-built
+    bundles-config file is loaded directly, skipping the git-repo scan
+    entirely.  This is the fast path used when VS Code is launched via the
+    ``gt.vscode.wrapper``, which writes the file before spawning ``code``.
+
+    Falls back to ``ENVOY_BNDL_ROOTS`` discovery when ``ENVOY_BUNDLES_CONFIG``
+    is absent or points to a missing file.
+
     ENVOY_BNDL_ROOTS should contain a list of root directories separated by
     the OS path separator (';' on Windows, ':' on Unix).
-    
+
     Returns:
         List of discovered bundles
-    
+
     """
+    # Fast path — use a pre-built bundles-config file when available.
+    bundles_config_str = os.environ.get('ENVOY_BUNDLES_CONFIG', '').strip()
+    if bundles_config_str:
+        config_path = Path(bundles_config_str)
+        if config_path.is_file():
+            logger.debug(
+                "Using pre-built bundle list from ENVOY_BUNDLES_CONFIG: %s",
+                config_path,
+            )
+            return load_bundles_from_config(config_path)
+        else:
+            logger.warning(
+                "ENVOY_BUNDLES_CONFIG is set but file not found: %s — "
+                "falling back to ENVOY_BNDL_ROOTS discovery",
+                config_path,
+            )
+
     roots_str = os.environ.get('ENVOY_BNDL_ROOTS', '')
     
     if not roots_str:

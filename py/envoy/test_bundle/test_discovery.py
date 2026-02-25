@@ -1,7 +1,7 @@
-"""Test bundle discovery functionality."""
+﻿"""Test bundle discovery functionality."""
 
 from pathlib import Path
-from gt.envoy._discovery import (
+from envoy._discovery import (
     validate_bundle,
     load_bundles_from_config,
     get_bundles

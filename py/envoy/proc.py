@@ -1,4 +1,4 @@
-"""envoy.proc -- Process execution with pre-built command environments.
+﻿"""envoy.proc -- Process execution with pre-built command environments.
 
 This module is the primary Python API for launching managed subprocesses
 through envoy's environment system.  It mirrors the ergonomics of
@@ -6,7 +6,7 @@ through envoy's environment system.  It mirrors the ergonomics of
 
 Usage examples::
 
-    import gt.envoy.proc as proc
+    import envoy.proc as proc
 
     # One-shot blocking call
     rc = proc.call(['maya', 'myfile.ma'])
@@ -74,6 +74,42 @@ DEVNULL = subprocess.DEVNULL
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _is_raw_path(spec: str) -> bool:
+    """Return ``True`` when *spec* should be treated as a direct executable
+    path rather than an envoy command name.
+
+    A spec is considered a raw path when it is absolute (``C:\\...``,
+    ``/usr/bin/...``) or contains an explicit directory separator
+    (``./code``, ``../bin/code``).  Plain names like ``'maya'``, ``'python'``
+    are envoy command names and return ``False``.
+    """
+    p = Path(spec)
+    return p.is_absolute() or (os.sep in spec) or ('/' in spec)
+
+
+def _raw_popen(
+    executable: str,
+    extra_args: list[str],
+    env: dict[str, str],
+    **kwargs,
+) -> subprocess.Popen:
+    """Spawn *executable* directly, bypassing envoy command resolution.
+
+    Unlike :func:`_popen` this does not look up a registry entry — the
+    caller is responsible for passing the full path.  The same
+    ``CREATE_NO_WINDOW`` / ``cmd /c`` treatment is applied on Windows.
+    """
+    full_cmd: list[str] = [executable] + list(extra_args)
+
+    if os.name == 'nt':
+        if 'creationflags' not in kwargs:
+            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+        if Path(executable).suffix.lower() in ('.bat', '.cmd'):
+            full_cmd = ['cmd', '/c'] + full_cmd
+
+    return subprocess.Popen(full_cmd, env=env, **kwargs)
+
 
 def _load_registry(
     bundle_roots: list[str] | None = None,
@@ -345,6 +381,12 @@ class Environment:
 
         Idempotent — after the first call the cached result is returned.
 
+        When :attr:`command` is an absolute path or contains a path separator
+        the registry and env-file machinery is bypassed entirely.  The
+        environment is built from the seed vars (core OS variables + any
+        *allowlist* entries) in closed mode, or inherited in full when
+        ``inherit_env=True``.
+
         Returns:
             The subprocess environment dictionary.
 
@@ -353,14 +395,30 @@ class Environment:
             EnvironmentBuildError: Environment files are missing or invalid.
         """
         if self._env is None:
-            registry, bundles = _load_registry(
-                bundle_roots=self._bundle_roots,
-                commands_file=self._commands_file,
-            )
-            self._env, self._cmd_def = _prepare_env(
-                self._command, registry, bundles,
-                self._inherit_env, self._allowlist,
-            )
+            if _is_raw_path(self._command):
+                # Direct executable — no registry lookup or env-file loading.
+                allowlist_set: set[str] | None = (
+                    set(self._allowlist) if self._allowlist else None
+                )
+                env_mgr = EnvironmentManager(
+                    inherit_env=self._inherit_env,
+                    allowlist=allowlist_set,
+                )
+                self._env = env_mgr.prepare_environment(env_files=[])
+                self._cmd_def = CommandDefinition(
+                    name=self._command,
+                    environment=[],
+                    alias=[self._command],
+                )
+            else:
+                registry, bundles = _load_registry(
+                    bundle_roots=self._bundle_roots,
+                    commands_file=self._commands_file,
+                )
+                self._env, self._cmd_def = _prepare_env(
+                    self._command, registry, bundles,
+                    self._inherit_env, self._allowlist,
+                )
         return self._env
 
     def spawn(self, args: list[str] | None = None, **kwargs) -> subprocess.Popen:
@@ -379,6 +437,8 @@ class Environment:
         """
         self.build()
         assert self._cmd_def is not None and self._env is not None
+        if _is_raw_path(self._command):
+            return _raw_popen(self._command, list(args or []), self._env, **kwargs)
         return _popen(self._cmd_def, list(args or []), self._env, **kwargs)
 
     def call(self, args: list[str] | None = None, **kwargs) -> int:

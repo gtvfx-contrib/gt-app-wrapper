@@ -1,4 +1,4 @@
-"""Exception classes for gt.envoy.
+﻿"""Exception classes for envoy.
 
 Hierarchy::
 
@@ -12,11 +12,11 @@ Hierarchy::
     ├── CommandNotFoundError
     └── ValidationError
 
-This module is re-exported as the public ``gt.envoy.exceptions`` submodule,
-and ``CalledProcessError`` is also re-exported on ``gt.envoy.proc`` so that
+This module is re-exported as the public ``envoy.exceptions`` submodule,
+and ``CalledProcessError`` is also re-exported on ``envoy.proc`` so that
 the following identity holds::
 
-    gt.envoy.exceptions.CalledProcessError is gt.envoy.proc.CalledProcessError
+    envoy.exceptions.CalledProcessError is envoy.proc.CalledProcessError
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from os import PathLike
 # ---------------------------------------------------------------------------
 
 class EnvoyError(Exception):
-    """Root base class for all gt.envoy exceptions.
+    """Root base class for all envoy exceptions.
 
     Analogous to ``bl.exceptions.BlError``.  Catching this class will catch
     any exception raised by the envoy package.
@@ -73,10 +73,10 @@ class CalledProcessError(EnvoyError, subprocess.CalledProcessError):
     :class:`subprocess.CalledProcessError` so it can be used wherever either
     base class is expected.
 
-    This class is exported from both ``gt.envoy.proc`` and
-    ``gt.envoy.exceptions``; they are the **same object**::
+    This class is exported from both ``envoy.proc`` and
+    ``envoy.exceptions``; they are the **same object**::
 
-        gt.envoy.exceptions.CalledProcessError is gt.envoy.proc.CalledProcessError
+        envoy.exceptions.CalledProcessError is envoy.proc.CalledProcessError
     """
 
     def __init__(self, returncode: int, cmd: Union[str, bytes, PathLike], output=None, stderr=None):

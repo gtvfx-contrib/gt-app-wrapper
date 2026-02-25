@@ -1,4 +1,4 @@
-"""Command loading and management for CLI wrapper."""
+﻿"""Command loading and management for CLI wrapper."""
 
 import json
 import logging
@@ -294,7 +294,7 @@ def find_commands_file(start_path: Path | None = None) -> Path | None:
     Resolution order:
 
     1. ``ENVOY_COMMANDS_FILE`` environment variable — if set, that path is
-       returned directly (used by :func:`~gt.envoy.testing.patch_commands_file`
+       returned directly (used by :func:`~envoy.testing.patch_commands_file`
        in tests).
     2. Upward directory walk from *start_path* (or cwd) looking for
        ``envoy_env/commands.json``.

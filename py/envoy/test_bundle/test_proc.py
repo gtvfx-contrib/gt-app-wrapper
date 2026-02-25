@@ -1,4 +1,4 @@
-"""Tests for the gt.envoy.proc public API.
+﻿"""Tests for the envoy.proc public API.
 
 Covers:
 - Bundle discovery integration (_load_registry)
@@ -18,14 +18,14 @@ import pytest
 # Ensure the package root is importable regardless of how pytest is invoked.
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-import gt.envoy.proc as proc
-from gt.envoy.proc import (
+import envoy.proc as proc
+from envoy.proc import (
     Environment,
     _load_registry,
     _collect_env_files,
     PIPE,
 )
-from gt.envoy._exceptions import (
+from envoy._exceptions import (
     CalledProcessError,
     CommandNotFoundError,
     EnvironmentBuildError,

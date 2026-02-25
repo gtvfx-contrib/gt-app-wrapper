@@ -1,4 +1,4 @@
-"""envoy.testing -- Test helpers for code that calls the envoy Python API.
+﻿"""envoy.testing -- Test helpers for code that calls the envoy Python API.
 
 Provides lightweight context managers for patching the bundle discovery
 environment inside unit tests without touching the live filesystem or the
@@ -6,7 +6,7 @@ real ``ENVOY_BNDL_ROOTS`` variable.
 
 Usage example::
 
-    import gt.envoy.testing as envoy_testing
+    import envoy.testing as envoy_testing
 
     def test_my_tool():
         with envoy_testing.patch_bundle_roots(['/test/fixtures/my_bundle']):
@@ -34,8 +34,8 @@ from pathlib import Path
 def patch_bundle_roots(roots: list[str | Path]):
     """Context manager that temporarily overrides ``ENVOY_BNDL_ROOTS``.
 
-    All bundle discovery performed inside the block (by :mod:`gt.envoy.proc`
-    or direct calls to :func:`~gt.envoy._discovery.discover_bundles_auto`) will
+    All bundle discovery performed inside the block (by :mod:`envoy.proc`
+    or direct calls to :func:`~envoy._discovery.discover_bundles_auto`) will
     search *roots* instead of whatever ``ENVOY_BNDL_ROOTS`` is set to in the
     real environment.
 
@@ -71,7 +71,7 @@ def patch_commands_file(commands_file: str | Path):
     Useful when your test fixture provides a bare ``commands.json`` rather
     than a full bundle directory tree.  Under the hood this clears
     ``ENVOY_BNDL_ROOTS`` and sets ``ENVOY_COMMANDS_FILE`` so that
-    :func:`~gt.envoy._commands.find_commands_file` resolves to the given path.
+    :func:`~envoy._commands.find_commands_file` resolves to the given path.
 
     .. note::
         This helper is complementary to :func:`patch_bundle_roots`.  Use

@@ -1,4 +1,4 @@
-"""Tests for the ApplicationWrapper module."""
+﻿"""Tests for the ApplicationWrapper module."""
 
 import sys
 import os
@@ -8,7 +8,7 @@ from pathlib import Path
 # Add the module to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-from gt.envoy import (
+from envoy import (
     ApplicationWrapper,
     WrapperConfig,
     ExecutionResult,

@@ -80,6 +80,7 @@ _CORE_ENV_VARS: frozenset[str] = frozenset({
 _ENVOY_ENV_VARS: frozenset[str] = frozenset({
     'ENVOY_BNDL_ROOTS',
     'ENVOY_ALLOWLIST',
+    'ENVOY_BUNDLES_CONFIG',
 })
 
 

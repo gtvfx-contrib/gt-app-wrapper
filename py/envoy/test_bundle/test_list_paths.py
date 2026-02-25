@@ -1,4 +1,4 @@
-"""Test list-based paths and Unix path normalization."""
+﻿"""Test list-based paths and Unix path normalization."""
 import sys
 import os
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 # Add the module to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-from gt.envoy import WrapperConfig, ApplicationWrapper
+from envoy import WrapperConfig, ApplicationWrapper
 
 # Set up test environment variable
 os.environ['CUSTOM_PATH'] = 'C:\\original\\path'

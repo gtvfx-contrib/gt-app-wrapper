@@ -1,4 +1,4 @@
-# Envoy
+﻿# Envoy
 
 **Environment orchestration for applications** — A CLI-first tool for managing complex application environments with JSON-based configuration and multi-bundle support.
 
@@ -264,8 +264,8 @@ Supports both `;` and `,` as separators. These are merged on top of the built-in
 Envoy exposes a Python API that mirrors the `bl` library's package model, with bundle-native terminology.
 
 ```python
-import gt.envoy as envoy
-import gt.envoy.proc as proc
+import envoy as envoy
+import envoy.proc as proc
 
 # ── version / verbosity ───────────────────────────────────────────────────────
 print(envoy.__version__)           # '0.1.0'

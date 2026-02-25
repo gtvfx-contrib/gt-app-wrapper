@@ -1,4 +1,4 @@
-"""
+﻿"""
 envoy -- Environment orchestration for managed application execution.
 
 Provides environment isolation, bundle-based discovery, and process launch
@@ -6,12 +6,12 @@ facilities for DCC applications and pipeline tools.
 
 Can be used as a Python library or as a CLI tool::
 
-    python -m gt.envoy [command] [args...]
+    python -m envoy [command] [args...]
 
 Quickstart (Python API)::
 
-    import gt.envoy as envoy
-    import gt.envoy.proc as proc
+    import envoy as envoy
+    import envoy.proc as proc
 
     # Inspect the prepared environment for a command
     env_dict = envoy.get_environment('maya')
@@ -39,7 +39,7 @@ Quickstart (Python API)::
 Submodules:
     proc       -- process execution (Environment class and free functions)
     testing    -- test helpers (patch_bundle_roots, patch_commands_file)
-    exceptions -- all gt.envoy exception classes
+    exceptions -- all envoy exception classes
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ import logging
 import platform
 from pathlib import Path
 
-#: The version of gt.envoy.
+#: The version of envoy.
 __version__: str = '0.1.0'
 
 from ._exceptions import (
@@ -88,8 +88,8 @@ from ._discovery import (
 from ._environment import _CORE_ENV_VARS, _ENVOY_ENV_VARS
 from ._cli import main as cli_main
 
-# Convenience submodule imports — ``import gt.envoy`` makes these available as
-# ``gt.envoy.proc``, ``gt.envoy.testing``, and ``gt.envoy.exceptions``.
+# Convenience submodule imports — ``import envoy`` makes these available as
+# ``envoy.proc``, ``envoy.testing``, and ``envoy.exceptions``.
 # This module eagerly imports these submodules at import time.
 from . import proc       # noqa: E402
 from . import testing    # noqa: E402
@@ -97,23 +97,23 @@ from . import exceptions # noqa: E402
 
 
 def set_api_verbosity(level: int | str) -> None:
-    """Set the logging verbosity for the ``gt.envoy`` logger.
+    """Set the logging verbosity for the ``envoy`` logger.
 
     Analogous to ``bl.setAPIVerbosity()``.  Pass a :mod:`logging` level
     constant (``logging.DEBUG``, ``logging.INFO``, etc.) or its string
     equivalent (``'DEBUG'``, ``'INFO'``, etc.).
 
     Args:
-        level: New log level for the ``gt.envoy`` logger tree.
+        level: New log level for the ``envoy`` logger tree.
 
     Example::
 
         import logging
-        import gt.envoy as envoy
+        import envoy as envoy
 
         envoy.set_api_verbosity(logging.DEBUG)
     """
-    logging.getLogger('gt.envoy').setLevel(level)
+    logging.getLogger('envoy').setLevel(level)
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Tests for the CLI module."""
+﻿"""Tests for the CLI module."""
 
 import json
 import sys
@@ -10,8 +10,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-from gt.envoy._commands import CommandRegistry
-from gt.envoy._cli import show_command_info
+from envoy._commands import CommandRegistry
+from envoy._cli import show_command_info
 
 
 def _make_registry(commands: dict) -> CommandRegistry:

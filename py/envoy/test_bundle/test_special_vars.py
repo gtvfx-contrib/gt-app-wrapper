@@ -1,4 +1,4 @@
-"""Test special wrapper variables."""
+﻿"""Test special wrapper variables."""
 import sys
 import os
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 # Add the module to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-from gt.envoy import WrapperConfig, ApplicationWrapper
+from envoy import WrapperConfig, ApplicationWrapper
 
 # Set up test PATH
 os.environ['TEST_PATH'] = 'C:/original/path'
